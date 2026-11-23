@@ -3,7 +3,7 @@ import { selectedLeadIds, selection } from "./selection.js";
 import { byId, setText } from "../../_core/format.js";
 import { setDashboardTab } from "../../core.js";
 import { appendLeadRows } from "./rows.js";
-import { LEAD_COLUMNS, TRAILING_COLUMNS, crmTableSignature, currentColumnSort, filteredLeads, importedColumns, setColumnSort, syncStateFilter, toggleColumnSort } from "./query.js";
+import { LEAD_COLUMNS, TRAILING_COLUMNS, crmTableSignature, currentColumnSort, filteredLeads, setColumnSort, syncStateFilter, toggleColumnSort } from "./query.js";
 
 let lastCrmTableSignature = null;
 
@@ -136,7 +136,6 @@ export function renderTable() {
   const head = byId("tableHead");
   const body = byId("tableBody");
   const leads = filteredLeads();
-  const extras = importedColumns();
   const currentLeadIds = new Set(state.leads.map((lead) => lead.id));
   for (const id of selectedLeadIds) {
     if (!currentLeadIds.has(id)) selectedLeadIds.delete(id);
@@ -166,9 +165,8 @@ export function renderTable() {
   head.append(selectAllCell);
 
   for (const column of LEAD_COLUMNS) head.append(headerCell(column));
-  for (const column of extras) head.append(headerCell({ label: column, key: `field:${column}`, kind: "text" }));
   for (const column of TRAILING_COLUMNS) head.append(headerCell(column));
-  appendLeadRows(body, leads, extras, renderTable);
+  appendLeadRows(body, leads, renderTable);
   const empty = byId("emptyState");
   empty.classList.toggle("visible", leads.length === 0);
   empty.querySelector("h2").textContent = state.leads.length === 0 ? "Your CRM starts here" : "No matching prospects";

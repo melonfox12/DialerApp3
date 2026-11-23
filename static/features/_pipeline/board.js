@@ -244,7 +244,7 @@ function applyPipelineCardState(card, lead, step, now = Date.now()) {
 
 function openProspectInTable(lead) {
   const search = byId("searchInput");
-  if (search) search.value = lead.name || lead.phone || "";
+  if (search) search.value = lead.contact_name || lead.phone || "";
   setDashboardTab("prospects");
   render();
 }
@@ -387,14 +387,14 @@ function buildCard(lead, step, cardOpen, notesOpen, transcriptOpen, touchesOpen)
 
   const avatar = document.createElement("span");
   avatar.className = "pipeline-card-avatar";
-  avatar.textContent = initials(lead.name || lead.business);
+  avatar.textContent = initials(lead.contact_name || lead.company);
 
   const headText = document.createElement("div");
   headText.className = "pipeline-card-head-text";
 
   const title = document.createElement("strong");
   title.className = "pipeline-card-title";
-  title.textContent = lead.name || lead.business || "Prospect";
+  title.textContent = lead.contact_name || lead.company || "Prospect";
   title.tabIndex = 0;
   title.setAttribute("role", "button");
   title.addEventListener("click", (event) => {
@@ -421,7 +421,7 @@ function buildCard(lead, step, cardOpen, notesOpen, transcriptOpen, touchesOpen)
   body.className = "pipeline-card-body";
   const meta = document.createElement("span");
   meta.className = "pipeline-card-meta";
-  meta.textContent = [lead.business, formatPhoneNumber(lead.phone)].filter(Boolean).join(" · ");
+  meta.textContent = [lead.company, formatPhoneNumber(lead.phone)].filter(Boolean).join(" · ");
   body.append(meta);
 
   const timer = document.createElement("span");
@@ -495,7 +495,7 @@ function buildCard(lead, step, cardOpen, notesOpen, transcriptOpen, touchesOpen)
     editor.value = leadNotes(freshLead());
     editor.rows = 3;
     editor.placeholder = "Add notes…";
-    editor.setAttribute("aria-label", `Notes for ${lead.name || lead.business || "prospect"}`);
+    editor.setAttribute("aria-label", `Notes for ${lead.contact_name || lead.company || "prospect"}`);
 
     const editActions = document.createElement("div");
     editActions.className = "pipeline-card-notes-edit-actions";
@@ -644,7 +644,7 @@ function bindColumnDrop(column, stepKey) {
       await applyMutationPayload(result);
       render();
       const label = pipelineStepsNow().find((item) => item.key === stepKey)?.label || stepKey;
-      showToast(`${lead.name || lead.phone}: ${label}`);
+      showToast(`${lead.contact_name || lead.phone}: ${label}`);
     } catch (error) {
       showToast(error.message, true);
     } finally {

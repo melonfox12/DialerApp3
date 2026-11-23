@@ -64,13 +64,7 @@ def normalize_phone(raw):
 
 
 def location_text(lead, key):
-    direct = str((lead or {}).get(key) or "").strip()
-    if direct:
-        return direct
-    for name, value in ((lead or {}).get("fields") or {}).items():
-        if str(name).strip().lower() == key:
-            return str(value or "").strip()
-    return ""
+    return str((lead or {}).get(key) or "").strip()
 
 
 def _folded(value):
@@ -267,10 +261,10 @@ def resolve_pool_status(value):
 
 
 def unique_business_types(leads):
-    """Distinct non-empty industry / business_type values from CRM rows, sorted for UI."""
+    """Distinct non-empty category values from CRM rows, sorted for UI."""
     seen = {}
     for lead in leads or []:
-        text = str((lead or {}).get("business_type") or "").strip()
+        text = str((lead or {}).get("category") or (lead or {}).get("business_type") or "").strip()
         if not text:
             continue
         folded = text.casefold()
@@ -283,7 +277,7 @@ def lead_matches_dial_business_type(lead, selected):
     """True when the prospect's industry matches the dialer filter (case-insensitive)."""
     if not selected:
         return True
-    text = str((lead or {}).get("business_type") or DEFAULT_BUSINESS_TYPE).strip().casefold()
+    text = str((lead or {}).get("category") or (lead or {}).get("business_type") or DEFAULT_BUSINESS_TYPE).strip().casefold()
     target = str(selected).strip().casefold()
     return bool(target) and text == target
 
@@ -301,8 +295,8 @@ def contact_keys(lead):
     phone = normalize_phone(lead.get("phone"))
     if phone:
         keys.add(("phone", phone))
-    name = _folded(lead.get("name"))
-    business = _folded(lead.get("business"))
+    name = _folded(lead.get("contact_name"))
+    business = _folded(lead.get("company"))
     city = _folded(location_text(lead, "city"))
     state_name = _folded(location_text(lead, "state"))
     if name and (business or city or state_name):
@@ -312,7 +306,7 @@ def contact_keys(lead):
 
 def identity_key(lead):
     """Name plus location for callback sync between duplicate imports."""
-    name = _folded(lead.get("name"))
+    name = _folded(lead.get("contact_name"))
     if not name:
         return None
     city = _folded(location_text(lead, "city"))
@@ -354,7 +348,7 @@ def agent_reservation_blocks_other_apps(lead, agent_id=None):
     if not is_agent_reserved(lead):
         return False
     if agent_id:
-        reserved_id = str((lead or {}).get(AGENT_RESERVED_ID_FIELD) or ((lead or {}).get("fields") or {}).get(AGENT_RESERVED_ID_FIELD) or "").strip()
+        reserved_id = str((lead or {}).get(AGENT_RESERVED_ID_FIELD) or "").strip()
         return reserved_id != str(agent_id)
     return True
 
@@ -394,11 +388,10 @@ def apply_callback_timer_migration_to_lead(lead, now):
     """One-time per lead: shift open callbacks forward after the 48h → 2h policy change."""
     if lead.get("status") != "dialed" or not lead.get("scheduled_until"):
         return False
-    fields = lead.setdefault("fields", {})
-    if fields.get(CALLBACK_TIMER_MIGRATION_FIELD):
+    if lead.get(CALLBACK_TIMER_MIGRATION_FIELD):
         return False
     due = callback_due(lead)
-    fields[CALLBACK_TIMER_MIGRATION_FIELD] = True
+    lead[CALLBACK_TIMER_MIGRATION_FIELD] = True
     if due is None:
         return False
     new_due = due - CALLBACK_TIMER_MIGRATION_SHIFT
@@ -644,9 +637,6 @@ def apply_agent_reservation(lead, agent_id, agent_name):
     """Mark a prospect as locked to one AI agent seat."""
     lead[AGENT_RESERVED_NAME_FIELD] = str(agent_name or "").strip()
     lead[AGENT_RESERVED_ID_FIELD] = str(agent_id or "").strip()
-    fields = lead.setdefault("fields", {})
-    fields[AGENT_RESERVED_NAME_FIELD] = lead[AGENT_RESERVED_NAME_FIELD]
-    fields[AGENT_RESERVED_ID_FIELD] = lead[AGENT_RESERVED_ID_FIELD]
     lead["status"] = AGENT_USE_STATUS
     lead["scheduled_until"] = None
 
@@ -654,7 +644,3 @@ def apply_agent_reservation(lead, agent_id, agent_name):
 def clear_agent_reservation_fields(lead):
     for key in (AGENT_RESERVED_NAME_FIELD, AGENT_RESERVED_ID_FIELD):
         lead.pop(key, None)
-        fields = lead.get("fields") or {}
-        if key in fields:
-            fields.pop(key, None)
-            lead["fields"] = fields

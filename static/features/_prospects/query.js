@@ -2,18 +2,15 @@ import { state } from "../../_core/state.js";
 import { byId } from "../../_core/format.js";
 
 export const LEAD_COLUMNS = [
-  { label: "Business Type", key: "business_type", kind: "text" },
-  { label: "Timezone", key: "timezone", kind: "text" },
-  { label: "First name", key: "first_name", kind: "text" },
-  { label: "Last name", key: "last_name", kind: "text" },
-  { label: "Company", key: "business", kind: "text" },
-  { label: "Pitch segment", key: "pitch_segment", kind: "text" },
+  { label: "Company", key: "company", kind: "text" },
+  { label: "Contact", key: "contact_name", kind: "text" },
+  { label: "Office manager", key: "office_manager", kind: "text" },
+  { label: "Phone", key: "phone", kind: "text" },
   { label: "City", key: "city", kind: "text" },
-  { label: "State", key: "state", kind: "text" },
-  { label: "Business phone", key: "phone", kind: "text" },
-  { label: "LinkedIn profile", key: "linkedin", kind: "text" },
-  { label: "Website", key: "website", kind: "text" },
-  { label: "Total Reviews", key: "review_count", kind: "number" },
+  { label: "Tier", key: "lead_tier", kind: "text" },
+  { label: "Score", key: "lead_score", kind: "number" },
+  { label: "Signal", key: "signal", kind: "text" },
+  { label: "Days since signal", key: "days_since_signal", kind: "number" },
   { label: "Call status", key: "status", kind: "text" },
 ];
 
@@ -22,7 +19,9 @@ export const TRAILING_COLUMNS = [
   { label: "Call transcript", key: "transcript", kind: "number" },
 ];
 
-let columnSort = { key: "review_count", direction: "desc", kind: "number" };
+const TIER_RANK = { A: 0, B: 1, C: 2, D: 3 };
+
+let columnSort = { key: "lead_tier", direction: "asc", kind: "text" };
 
 export function currentColumnSort() {
   return columnSort;
@@ -42,52 +41,11 @@ export function toggleColumnSort(key) {
 }
 
 export function locationText(lead, key) {
-  const direct = String(lead?.[key] || "").trim();
-  if (direct) return direct;
-  for (const [name, value] of Object.entries(lead?.fields || {})) {
-    if (name.trim().toLowerCase() === key) return String(value || "").trim();
-  }
-  return "";
-}
-
-export function splitName(name) {
-  const text = String(name || "").trim();
-  if (!text) return { first: "", last: "" };
-  const space = text.indexOf(" ");
-  if (space < 0) return { first: text, last: "" };
-  return { first: text.slice(0, space), last: text.slice(space + 1).trim() };
-}
-
-export function fieldText(lead, ...aliases) {
-  const wanted = new Set(aliases.map((alias) => alias.trim().toLowerCase()));
-  for (const [name, value] of Object.entries(lead?.fields || {})) {
-    if (wanted.has(name.trim().toLowerCase())) return String(value || "").trim();
-  }
-  return "";
-}
-
-function pitchSegmentFieldKey(name) {
-  return String(name || "").trim().toLowerCase().replace(/[\s_]+/g, "");
-}
-
-export function pitchSegmentText(lead) {
-  const direct = String(lead?.pitch_segment || "").trim();
-  if (direct) return direct;
-  for (const [name, value] of Object.entries(lead?.fields || {})) {
-    if (pitchSegmentFieldKey(name) === "pitchsegment") return String(value || "").trim();
-  }
-  return "";
+  return String(lead?.[key] || "").trim();
 }
 
 export function importedColumns() {
-  const columns = [];
-  const standard = /^(name|full name|contact|first name|last name|prospect|business type|industry|business|company|organization|organisation|pitch segment|state|city|phone(?: number| e\.?164)?|mobile|cell|telephone|business phone|time\s?zone|tz|linkedin(?: profile| url)?|website|url|call.?status|status|notes|note|total reviews|reviews \(last 30 days\)|days since last review|30-day %|recency source|fit)$/i;
-  for (const lead of state.leads) {
-    for (const key of Object.keys(lead.fields || {})) {
-      if (!standard.test(key) && !columns.includes(key)) columns.push(key);
-    }
-  }
-  return columns;
+  return [];
 }
 
 export function syncStateFilter() {
@@ -117,27 +75,24 @@ export function filteredLeads() {
   const query = byId("searchInput").value.trim().toLocaleLowerCase();
   const filter = byId("statusFilter").value;
   const stateFilter = (byId("stateFilter")?.value || "").trim().toUpperCase();
-  const minTotal = bound("minTotalReviews");
-  const maxTotal = bound("maxTotalReviews");
-  const minRecent = bound("minRecentReviews");
   const leads = state.leads.filter((lead) => {
     if (filter !== "all" && lead.status !== filter) return false;
     if (stateFilter && locationText(lead, "state").trim().toUpperCase() !== stateFilter) return false;
-    const total = numberOrNull(lead.review_count);
-    const recent = numberOrNull(lead.reviews_last_30_days);
-    if (minTotal != null && (total == null || total < minTotal)) return false;
-    if (maxTotal != null && (total == null || total > maxTotal)) return false;
-    if (minRecent != null && (recent == null || recent < minRecent)) return false;
     if (!query) return true;
-    const { first, last } = splitName(lead.name);
     const values = [
-      lead.business_type, lead.timezone, first, last, lead.business, pitchSegmentText(lead),
-      locationText(lead, "city"), locationText(lead, "state"), lead.phone,
-      fieldText(lead, "LinkedIn profile", "LinkedIn", "linkedin profile", "linkedin"),
-      fieldText(lead, "Website", "website", "url"),
-      lead.status, lead.review_count,
-      lead.recency_source, lead.reviews_last_30_days, lead.days_since_last_review, lead.review_pct_30_days,
-      ...Object.values(lead.fields || {}),
+      lead.company,
+      lead.contact_name,
+      lead.office_manager,
+      lead.phone,
+      lead.city,
+      lead.lead_tier,
+      lead.lead_score,
+      lead.signal,
+      lead.days_since_signal,
+      lead.category,
+      lead.website,
+      lead.score_reasons,
+      lead.status,
     ];
     return values.some((value) => String(value ?? "").toLocaleLowerCase().includes(query));
   });
@@ -149,46 +104,29 @@ export function crmTableSignature() {
   return JSON.stringify([
     columnSort,
     byId("stateFilter")?.value || "",
-    byId("minTotalReviews")?.value || "",
-    byId("maxTotalReviews")?.value || "",
-    byId("minRecentReviews")?.value || "",
     state.pending_outcome?.id || null,
-    state.leads.map((lead) => {
-      const { first, last } = splitName(lead.name);
-      return [
-        lead.id,
-        lead.business_type,
-        lead.timezone,
-        first,
-        last,
-        lead.business,
-        pitchSegmentText(lead),
-        locationText(lead, "city"),
-        locationText(lead, "state"),
-        lead.phone,
-        fieldText(lead, "LinkedIn profile", "LinkedIn", "linkedin profile", "linkedin"),
-        fieldText(lead, "Website", "website", "url"),
-        lead.review_count,
-        lead.status,
-        lead.scheduled_until,
-        lead.fields,
-        fieldText(lead, "Notes", "notes", "note"),
-        lead.transcript?.length || 0,
-      ];
-    }),
+    state.leads.map((lead) => [
+      lead.id,
+      lead.company,
+      lead.contact_name,
+      lead.office_manager,
+      lead.phone,
+      lead.city,
+      lead.lead_tier,
+      lead.lead_score,
+      lead.signal,
+      lead.days_since_signal,
+      lead.status,
+      lead.scheduled_until,
+      lead.score_reasons,
+      lead.transcript?.length || 0,
+    ]),
   ]);
 }
 
 function columnKind(key) {
   const column = [...LEAD_COLUMNS, ...TRAILING_COLUMNS].find((item) => item.key === key);
   return column?.kind || "text";
-}
-
-function bound(id) {
-  const raw = byId(id)?.value.trim() ?? "";
-  if (raw === "") return null;
-  const number = Number(raw);
-  return Number.isFinite(number) ? number : null;
 }
 
 function numberOrNull(value) {
@@ -217,31 +155,18 @@ function sortValue(lead) {
     if (key === "transcript") return lead.transcript?.length || 0;
     return numberOrNull(lead[key]);
   }
-  if (key === "first_name" || key === "last_name") {
-    const part = splitName(lead.name)[key === "first_name" ? "first" : "last"];
-    return part || null;
-  }
-  if (key === "linkedin") {
-    return fieldText(lead, "LinkedIn profile", "LinkedIn", "linkedin profile", "linkedin") || null;
-  }
-  if (key === "website") {
-    return fieldText(lead, "Website", "website", "url") || null;
-  }
-  if (key === "pitch_segment") {
-    return pitchSegmentText(lead) || null;
-  }
   if (key === "notes") {
-    return fieldText(lead, "Notes", "notes", "note") || null;
-  }
-  if (key === "state" || key === "city") {
-    return locationText(lead, key) || null;
-  }
-  if (key.startsWith("field:")) {
-    return String(lead.fields?.[key.slice(6)] || "").trim() || null;
+    return String(lead.score_reasons || "").trim() || null;
   }
   return String(lead[key] || "").trim() || null;
 }
 
 function tieBreak(left, right) {
-  return String(left.name || left.business || "").localeCompare(String(right.name || right.business || ""), undefined, { sensitivity: "base" });
+  const leftTier = TIER_RANK[String(left.lead_tier || "C").toUpperCase()] ?? 9;
+  const rightTier = TIER_RANK[String(right.lead_tier || "C").toUpperCase()] ?? 9;
+  if (leftTier !== rightTier) return leftTier - rightTier;
+  const leftScore = numberOrNull(left.lead_score) ?? -Infinity;
+  const rightScore = numberOrNull(right.lead_score) ?? -Infinity;
+  if (leftScore !== rightScore) return rightScore - leftScore;
+  return String(right.signal_date || "").localeCompare(String(left.signal_date || ""));
 }

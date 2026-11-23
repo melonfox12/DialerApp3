@@ -1,65 +1,22 @@
-"""CSV import, header detection, and manual prospect construction."""
+"""CSV import and manual prospect construction for the normalized prospect schema."""
 
 import csv
 import re
-import uuid
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from io import StringIO
 
-from shared.dial_policy import location_text
 from shared.infra import utc_now
+from shared.prospect_schema import LEAD_TIERS, display_name, map_csv_header, normalize_header
 from shared.vocabulary import (
-    DEFAULT_BUSINESS_TYPE,
     MANUAL_CALLBACK_HOURS,
-    STATUS_KEYS,
     TIMEZONE_ALIASES,
     UTC_OFFSET_ZONES,
     parse_prospect_status,
 )
 
-STATUSES = STATUS_KEYS
-PHONE_HEADER_WORDS = ("phone", "mobile", "cell", "tel", "number", "whatsapp")
-BUSINESS_HEADER_WORDS = ("business", "company", "organization", "organisation", "employer", "account", "firm")
-TIMEZONE_HEADER_WORDS = ("timezone", "time zone", "tz")
-REVIEW_HEADER_WORDS = ("review", "rating count", "num reviews", "num_reviews")
-BUSINESS_TYPE_HEADER_WORDS = ("business type", "industry", "vertical", "sector")
-
-TIMEZONE_ABBREVIATION = re.compile(r"\b(e[sd]t|c[sd]t|m[sd]t|p[sd]t|akst|akdt|hst)\b", re.I)
-STATE_HEADER = re.compile(r"\bstate\b", re.I)
-CITY_HEADER = re.compile(r"\bcity\b", re.I)
-JUNK_HEADER = re.compile(r"\b(e-?mail|address|street|city|state|zip|postal|country|url|website|linkedin|notes?|status|id|title|revenue|source|date|fax)\b", re.I)
 SCIENTIFIC_NUMBER = re.compile(r"^(\d)(?:\.(\d+))?[eE]\+?(\d+)$")
-
-# Scraper headers map onto existing lead keys where the CRM already stores that fact.
-# name = Prospect, business = Company, phone = Phone Number, review_count = Total Reviews.
-EXACT_HEADERS = {
-    "business type": "business_type",
-    "industry": "business_type",
-    "prospect": "name",
-    "company": "business",
-    "pitch segment": "pitch_segment",
-    "pitchsegment": "pitch_segment",
-    "state": "state",
-    "city": "city",
-    "phone number": "phone",
-    "timezone": "timezone",
-    "time zone": "timezone",
-    "total reviews": "review_count",
-    "reviews (last 30 days)": "reviews_last_30_days",
-    "days since last review": "days_since_last_review",
-    "30-day %": "review_pct_30_days",
-    "30-day%": "review_pct_30_days",
-    "recency source": "recency_source",
-}
-IGNORED_HEADERS = {"fit"}
-METRIC_FIELDS = (
-    "review_count",
-    "reviews_last_30_days",
-    "days_since_last_review",
-    "review_pct_30_days",
-    "recency_source",
-)
+TIMEZONE_ABBREVIATION = re.compile(r"\b(e[sd]t|c[sd]t|m[sd]t|p[sd]t|akst|akdt|hst)\b", re.I)
 
 
 def _phone(value):
@@ -89,6 +46,7 @@ def _phone(value):
         return "+" + digits
     return None
 
+
 def _timezone(value):
     text = str(value or "").strip()
     if not text:
@@ -97,8 +55,10 @@ def _timezone(value):
     alias = TIMEZONE_ALIASES.get(lower) or TIMEZONE_ALIASES.get(lower.replace(" ", "_"))
     if alias:
         return alias
-    for word, zone in (("eastern", "Eastern"), ("central", "Central"), ("mountain", "Mountain"),
-                       ("pacific", "Pacific"), ("alaska", "Alaska"), ("hawaii", "Hawaii")):
+    for word, zone in (
+        ("eastern", "Eastern"), ("central", "Central"), ("mountain", "Mountain"),
+        ("pacific", "Pacific"), ("alaska", "Alaska"), ("hawaii", "Hawaii"),
+    ):
         if word in lower:
             return zone
     abbrev = TIMEZONE_ABBREVIATION.search(lower)
@@ -115,23 +75,30 @@ def _timezone(value):
                 return zone
     return text
 
-def _review_count(value):
+
+def _text(value, *, limit=500):
     text = str(value if value is not None else "").strip()
+    if len(text) > limit:
+        raise ValueError("Field value is too long.")
+    return text
+
+
+def _state_code(value):
+    text = _text(value, limit=8).upper()
     if not text:
-        return None
-    match = re.search(r"-?\d+", text.replace(",", ""))
-    if not match:
-        return None
-    try:
-        return int(match.group())
-    except ValueError:
-        return None
+        return ""
+    if len(text) == 2 and text.isalpha():
+        return text
+    return text[:2] if len(text) >= 2 else text
 
 
-def _optional_decimal(value):
+def _tier(value):
+    text = str(value or "").strip().upper()
+    return text if text in LEAD_TIERS else "C"
+
+
+def _score(value):
     text = str(value if value is not None else "").strip().replace(",", "")
-    if text.endswith("%"):
-        text = text[:-1].strip()
     if not text:
         return None
     try:
@@ -140,34 +107,26 @@ def _optional_decimal(value):
         return None
     if not number.is_finite():
         return None
-    rendered = format(number, "f")
-    if "." in rendered:
-        rendered = rendered.rstrip("0").rstrip(".")
-    if rendered in ("", "-", ".", "-."):
+    return float(number)
+
+
+def _date(value):
+    text = str(value or "").strip()
+    if not text:
         return None
-    if "." not in rendered:
-        return int(rendered)
-    return float(rendered)
+    if len(text) >= 10 and text[4] == "-" and text[7] == "-":
+        try:
+            return date.fromisoformat(text[:10])
+        except ValueError:
+            pass
+    match = re.search(r"(\d{4})-(\d{2})-(\d{2})", text)
+    if match:
+        try:
+            return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        except ValueError:
+            return None
+    return None
 
-
-def _header_key(value):
-    return re.sub(r"[\s_]+", " ", str(value or "").strip().lower()).strip()
-
-
-def _exact_columns(header):
-    exact = {}
-    ignored = set()
-    if not header:
-        return exact, ignored
-    for index, value in enumerate(header):
-        key = _header_key(value)
-        if key in IGNORED_HEADERS:
-            ignored.add(index)
-            continue
-        field = EXACT_HEADERS.get(key)
-        if field and field not in exact:
-            exact[field] = index
-    return exact, ignored
 
 def _choose_dialect(text):
     sample = text[:8192]
@@ -179,6 +138,7 @@ def _choose_dialect(text):
     if first.count(dialect.delimiter) == 0 and first.count(",") > 0:
         return csv.excel
     return dialect
+
 
 def _read_csv(data):
     if isinstance(data, str):
@@ -198,114 +158,139 @@ def _read_csv(data):
     if not text:
         return []
     dialect = _choose_dialect(text)
-    return [[cell.strip() for cell in row] for row in csv.reader(StringIO(text), dialect)
-            if any(cell.strip() for cell in row)]
+    return [[cell.strip() for cell in row] for row in csv.reader(StringIO(text), dialect) if any(cell.strip() for cell in row)]
 
-def _unique_headers(headers):
-    seen = {}
-    result = []
-    for index, header in enumerate(headers):
-        base = header.strip() or f"Column {index + 1}"
-        seen[base] = seen.get(base, 0) + 1
-        result.append(base if seen[base] == 1 else f"{base} ({seen[base]})")
-    return result
+
+def _blank_lead():
+    return {
+        "company": "",
+        "contact_name": "",
+        "office_manager": "",
+        "phone": "",
+        "alt_phone": None,
+        "email": "",
+        "street": "",
+        "city": "",
+        "state": "",
+        "zip": "",
+        "lead_tier": "C",
+        "lead_score": None,
+        "score_reasons": "",
+        "signal": "",
+        "signal_date": None,
+        "now_open_or_moved": "",
+        "category": "",
+        "property_type": "",
+        "hygiene_focus": "",
+        "website": "",
+        "county": "",
+        "providers_listed": "",
+        "source": "",
+        "source_file": "",
+        "property_verdict": "",
+        "residential_check": "",
+        "remote_or_mobile": "",
+        "shared_address": None,
+        "suite_in_address": None,
+        "status": "new",
+        "scheduled_until": None,
+        "timezone": "Unknown",
+        "transcript": [],
+        "call_log": [],
+        "pipeline_step": None,
+        "pipeline_step_entered_at": None,
+        "pipeline_history": [],
+        "status_history": [],
+        "booked_at": None,
+        "passed_at": None,
+        "agent_reserved_name": "",
+        "agent_reserved_id": "",
+        "archived_at": None,
+    }
+
+
+def _assign_field(lead, field, value):
+    if field == "phone":
+        phone = _phone(value)
+        if phone and not lead.get("phone"):
+            lead["phone"] = phone
+        elif phone and lead.get("phone") and phone != lead["phone"] and not lead.get("alt_phone"):
+            lead["alt_phone"] = phone
+        return
+    if field == "website":
+        text = _text(value, limit=500)
+        if text and not lead.get("website"):
+            lead["website"] = text
+        return
+    if field == "lead_score":
+        score = _score(value)
+        if score is not None and lead.get("lead_score") is None:
+            lead["lead_score"] = score
+        return
+    if field == "lead_tier":
+        if str(value or "").strip():
+            lead["lead_tier"] = _tier(value)
+        return
+    if field == "signal_date":
+        parsed = _date(value)
+        if parsed:
+            lead["signal_date"] = parsed.isoformat()
+        return
+    if field == "state":
+        lead["state"] = _state_code(value)
+        return
+    if field == "timezone":
+        zone = _timezone(value)
+        if zone:
+            lead["timezone"] = zone
+        return
+    if field in ("shared_address", "suite_in_address"):
+        lead[field] = _coerce_bool_field(value)
+        return
+    if field in lead:
+        lead[field] = _text(value, limit=2000 if field == "score_reasons" else 500)
+
+
+def _coerce_bool_field(value):
+    if value is None or value == "":
+        return None
+    text = str(value).strip().lower()
+    if text in ("1", "true", "yes", "y"):
+        return True
+    if text in ("0", "false", "no", "n"):
+        return False
+    return None
+
 
 def parse_csv(data, known_phones=()):
     rows = _read_csv(data)
     if not rows:
-        return [], {"duplicates": 0, "skipped": 0, "columns": []}
-
-    width = max(map(len, rows))
-    rows = [row + [""] * (width - len(row)) for row in rows]
-    first_has_phone = any(_phone(value) for value in rows[0])
-    header = None if first_has_phone else _unique_headers(rows[0])
-    records = rows[1:] if header else rows
-    headers = header or [f"Column {index + 1}" for index in range(width)]
-    hits = [sum(bool(_phone(row[column])) for row in records) for column in range(width)]
-
-    exact, ignored = _exact_columns(header)
-    phone_columns = []
-    if header:
-        phone_columns = [index for index, value in enumerate(header)
-                         if index not in ignored
-                         and any(word in value.lower() for word in PHONE_HEADER_WORDS)
-                         and "fax" not in value.lower() and hits[index]]
-    if "phone" in exact and hits[exact["phone"]] and exact["phone"] not in phone_columns:
-        phone_columns.insert(0, exact["phone"])
-    if not phone_columns and max(hits, default=0):
-        fallback = hits.index(max(hits))
-        if fallback not in ignored:
-            phone_columns = [fallback]
-
-    used = set(phone_columns)
-    used.update(ignored)
-    used.update(exact.values())
-    if "name" in exact:
-        first_name = last_name = None
-        name_column = exact["name"]
-    else:
-        first_name = next((i for i, value in enumerate(header or [])
-                           if "first" in value.lower() and i not in used), None)
-        last_name = next((i for i, value in enumerate(header or [])
-                          if "last" in value.lower() and "name" in value.lower() and i not in used), None)
-        full_name = next((i for i, value in enumerate(header or [])
-                          if ("name" in value.lower() or "contact" in value.lower()) and i not in used
-                          and i not in (first_name, last_name)), None)
-        name_column = full_name
-    business_column = exact.get("business")
-    if business_column is None:
-        business_column = next((i for i, value in enumerate(header or [])
-                                if i not in used and any(word in value.lower() for word in BUSINESS_HEADER_WORDS)), None)
-    if first_name is not None and last_name is not None:
-        used.update((first_name, last_name))
-    elif name_column is not None:
-        used.add(name_column)
-    if business_column is not None:
-        used.add(business_column)
-    state_column = exact.get("state")
-    if state_column is None:
-        state_column = _header_column(header, used, STATE_HEADER)
-    if state_column is not None:
-        used.add(state_column)
-    city_column = exact.get("city")
-    if city_column is None:
-        city_column = _header_column(header, used, CITY_HEADER)
-    if city_column is not None:
-        used.add(city_column)
-    timezone_column = exact.get("timezone")
-    if timezone_column is None:
-        timezone_column = next((i for i, value in enumerate(header or [])
-                                if i not in used and any(word in value.lower() for word in TIMEZONE_HEADER_WORDS)), None)
-    if timezone_column is not None:
-        used.add(timezone_column)
-    review_column = exact.get("review_count")
-    if review_column is None:
-        review_column = next((i for i, value in enumerate(header or [])
-                              if i not in used and any(word in value.lower() for word in REVIEW_HEADER_WORDS)), None)
-    if review_column is not None:
-        used.add(review_column)
-    business_type_column = exact.get("business_type")
-    if business_type_column is None:
-        business_type_column = next((i for i, value in enumerate(header or [])
-                                     if i not in used
-                                     and any(word in value.lower() for word in BUSINESS_TYPE_HEADER_WORDS)), None)
-    if business_type_column is not None:
-        used.add(business_type_column)
-
-    text_columns = [i for i in range(width) if i not in used and hits[i] <= len(records) // 2
-                    and not (header and JUNK_HEADER.search(header[i]))]
-    if name_column is None and first_name is None and text_columns:
-        name_column = text_columns.pop(0)
-    if business_column is None and text_columns:
-        business_column = text_columns.pop(0)
+        return [], {"duplicates": 0, "skipped": 0, "columns": [], "total": 0, "added": 0}
+    headers = rows[0]
+    records = rows[1:]
+    columns = [str(h).strip() for h in headers]
+    mapped = []
+    for header in headers:
+        field = map_csv_header(header)
+        mapped.append(field)
 
     seen = set(known_phones)
     leads = []
     duplicates = skipped = 0
     for row in records:
-        phone = next((_phone(row[index]) for index in phone_columns if _phone(row[index])), None)
-        if not phone:
-            phone = next((_phone(value) for value in row if _phone(value)), None)
+        lead = _blank_lead()
+        score_fallback = None
+        for index, cell in enumerate(row):
+            field = mapped[index] if index < len(mapped) else None
+            if not field or not str(cell).strip():
+                continue
+            if field == "__score_fallback__":
+                score_fallback = cell
+                continue
+            _assign_field(lead, field, cell)
+        if lead.get("lead_score") is None and score_fallback is not None:
+            _assign_field(lead, "lead_score", score_fallback)
+        phone = lead.get("phone")
         if not phone:
             skipped += 1
             continue
@@ -313,107 +298,40 @@ def parse_csv(data, known_phones=()):
             duplicates += 1
             continue
         seen.add(phone)
-        if "name" in exact:
-            name = row[exact["name"]].strip()
-        elif first_name is not None and last_name is not None:
-            name = f"{row[first_name]} {row[last_name]}".strip()
-        else:
-            name = row[name_column].strip() if name_column is not None else ""
-        located = {index for index in (state_column, city_column) if index is not None}
-        located.update(ignored)
-        located.update(exact[field] for field in METRIC_FIELDS if field in exact)
-        if "pitch_segment" in exact:
-            located.add(exact["pitch_segment"])
-        fields = {headers[index]: value for index, value in enumerate(row) if value and index not in located}
-        timezone = _timezone(row[timezone_column]) if timezone_column is not None else None
-        review_count = _review_count(row[review_column]) if review_column is not None else None
-        reviews_last_30_days = _review_count(row[exact["reviews_last_30_days"]]) if "reviews_last_30_days" in exact else None
-        days_since_last_review = _review_count(row[exact["days_since_last_review"]]) if "days_since_last_review" in exact else None
-        review_pct_30_days = _optional_decimal(row[exact["review_pct_30_days"]]) if "review_pct_30_days" in exact else None
-        recency_source = row[exact["recency_source"]].strip() if "recency_source" in exact else ""
-        if business_type_column is not None:
-            business_type = row[business_type_column].strip()
-        else:
-            business_type = ""
-        if not business_type:
-            business_type = DEFAULT_BUSINESS_TYPE
-        leads.append({
-            "id": str(uuid.uuid4()),
-            "name": name,
-            "business_type": business_type,
-            "business": row[business_column].strip() if business_column is not None else "",
-            "pitch_segment": row[exact["pitch_segment"]].strip() if "pitch_segment" in exact else "",
-            "state": row[state_column].strip() if state_column is not None else "",
-            "city": row[city_column].strip() if city_column is not None else "",
-            "phone": phone,
-            "timezone": timezone or "Unknown",
-            "review_count": review_count,
-            "reviews_last_30_days": reviews_last_30_days,
-            "days_since_last_review": days_since_last_review,
-            "review_pct_30_days": review_pct_30_days,
-            "recency_source": recency_source or None,
-            "status": "new",
-            "scheduled_until": None,
-            "transcript": [],
-            "fields": fields,
-            "created_at": utc_now().isoformat(),
-        })
-    return leads, {"duplicates": duplicates, "skipped": skipped, "columns": headers}
-
-_LIMITS = {
-    "name": 200,
-    "business_type": 120,
-    "business": 200,
-    "pitch_segment": 120,
-    "state": 80,
-    "city": 120,
-    "timezone": 80,
-    "transcript": 4000,
-}
+        if not lead.get("company"):
+            lead["company"] = display_name(lead) if lead.get("contact_name") else phone
+        if not lead.get("contact_name"):
+            lead["contact_name"] = lead["company"]
+        leads.append(lead)
+    return leads, {"duplicates": duplicates, "skipped": skipped, "columns": columns, "added": 0, "total": 0}
 
 
 def build_manual_lead(payload, known_phones=()):
     if not isinstance(payload, dict):
         raise ValueError("Prospect details must be an object.")
-    name = _text(payload.get("name"), "name")
-    business = _text(payload.get("business"), "business")
-    pitch_segment = _text(payload.get("pitch_segment"), "pitch_segment")
-    state = _text(payload.get("state"), "state")
-    city = _text(payload.get("city"), "city")
+    lead = _blank_lead()
+    allowed = set(_blank_lead().keys()) - {"status", "scheduled_until", "transcript", "call_log"}
+    for key in allowed:
+        if key in payload:
+            _assign_field(lead, key, payload[key])
     phone = _phone(payload.get("phone"))
     if not phone:
         raise ValueError("Enter a valid phone number.")
     if phone in set(known_phones):
         raise ValueError("A prospect with that phone number already exists.")
-    timezone = _timezone(_text(payload.get("timezone"), "timezone")) or "Unknown"
+    lead["phone"] = phone
     status = parse_prospect_status(str(payload.get("status") or "new").strip() or "new")
-    if status not in STATUSES:
+    from shared.vocabulary import STATUS_KEYS
+    if status not in STATUS_KEYS:
         raise ValueError("Unknown prospect status.")
-    fields = _extra_fields(payload.get("fields"))
-    transcript = _transcript(_text(payload.get("transcript"), "transcript"))
-    scheduled_until = (utc_now() + timedelta(hours=MANUAL_CALLBACK_HOURS)).isoformat() if status == "dialed" else None
-    business_type = _text(payload.get("business_type") or DEFAULT_BUSINESS_TYPE, "business_type")
-    lead = {
-        "id": str(uuid.uuid4()),
-        "name": name,
-        "business_type": business_type,
-        "business": business,
-        "pitch_segment": pitch_segment,
-        "state": state,
-        "city": city,
-        "phone": phone,
-        "timezone": timezone,
-        "review_count": None,
-        "reviews_last_30_days": None,
-        "days_since_last_review": None,
-        "review_pct_30_days": None,
-        "recency_source": None,
-        "status": status,
-        "scheduled_until": scheduled_until,
-        "transcript": transcript,
-        "fields": fields,
-        "created_at": utc_now().isoformat(),
-    }
+    lead["status"] = status
+    lead["timezone"] = _timezone(payload.get("timezone")) or "Unknown"
+    if not lead.get("company"):
+        lead["company"] = _text(payload.get("company") or display_name(lead), limit=200)
+    if not lead.get("contact_name"):
+        lead["contact_name"] = _text(payload.get("contact_name") or lead["company"], limit=200)
+    if status == "dialed":
+        lead["scheduled_until"] = (utc_now() + timedelta(hours=MANUAL_CALLBACK_HOURS)).isoformat()
     if status == "booked":
         lead["booked_at"] = utc_now().isoformat()
     return lead
@@ -423,147 +341,33 @@ def update_lead_fields(lead, payload, known_phones=()):
     if not isinstance(payload, dict):
         raise ValueError("Prospect details must be an object.")
     changed = False
-    if "name" in payload:
-        lead["name"] = _text(payload.get("name"), "name")
-        changed = True
-    if "business_type" in payload:
-        lead["business_type"] = _text(payload.get("business_type"), "business_type")
-        changed = True
-    if "business" in payload:
-        lead["business"] = _text(payload.get("business"), "business")
-        changed = True
-    if "pitch_segment" in payload:
-        lead["pitch_segment"] = _text(payload.get("pitch_segment"), "pitch_segment")
-        _forget_location_alias(lead, "pitch segment")
-        changed = True
-    if "state" in payload:
-        lead["state"] = _text(payload.get("state"), "state")
-        _forget_location_alias(lead, "state")
-        changed = True
-    if "city" in payload:
-        lead["city"] = _text(payload.get("city"), "city")
-        _forget_location_alias(lead, "city")
-        changed = True
     if "phone" in payload:
         phone = _phone(payload.get("phone"))
         if not phone:
             raise ValueError("Enter a valid phone number.")
         if phone in set(known_phones):
             raise ValueError("A prospect with that phone number already exists.")
-        lead["phone"] = phone
-        changed = True
-    if "timezone" in payload:
-        lead["timezone"] = _timezone(_text(payload.get("timezone"), "timezone")) or "Unknown"
-        changed = True
-    if "fields" in payload:
-        lead["fields"] = _merged_fields(lead.get("fields"), payload.get("fields"))
-        changed = True
-    if not changed:
+        if phone != lead.get("phone"):
+            lead["phone"] = phone
+            changed = True
+    for key, value in payload.items():
+        if key in ("phone", "id", "status", "call_log", "transcript"):
+            continue
+        if key not in lead:
+            continue
+        before = lead.get(key)
+        _assign_field(lead, key, value)
+        if lead.get(key) != before:
+            changed = True
+    if not changed and "phone" not in payload:
         raise ValueError("No prospect fields to update.")
     return lead
 
 
-def _is_pitch_segment_field(name):
-    key = re.sub(r"[\s_]+", "", str(name or "").strip().casefold())
-    return key == "pitchsegment"
-
-
+# Legacy no-ops removed from CRM (import hooks).
 def apply_pitch_segment_from_fields(lead):
-    """Promote Pitch segment from imported extra columns. Returns True when the lead changed."""
-    if not isinstance(lead, dict):
-        return False
-    if str(lead.get("pitch_segment") or "").strip():
-        return False
-    fields = lead.get("fields") or {}
-    for name, value in fields.items():
-        if not _is_pitch_segment_field(name):
-            continue
-        text = str(value or "").strip()
-        if not text:
-            return False
-        lead["pitch_segment"] = text
-        lead["fields"] = {
-            field_name: field_value
-            for field_name, field_value in fields.items()
-            if not _is_pitch_segment_field(field_name)
-        }
-        return True
     return False
 
 
 def apply_business_type_default_to_lead(lead):
-    """Backfill missing business type on stored prospects. Returns True when the lead changed."""
-    if not isinstance(lead, dict):
-        return False
-    if str(lead.get("business_type") or "").strip():
-        return False
-    lead["business_type"] = DEFAULT_BUSINESS_TYPE
-    fields = lead.get("fields") or {}
-    cleaned = {
-        name: value
-        for name, value in fields.items()
-        if str(name).strip().lower() not in ("business type", "industry")
-    }
-    if cleaned != fields:
-        lead["fields"] = cleaned
-    return True
-
-
-def _header_column(header, used, pattern):
-    if not header:
-        return None
-    return next((index for index, value in enumerate(header) if index not in used and pattern.search(value)), None)
-
-
-def _forget_location_alias(lead, key):
-    fields = lead.get("fields") or {}
-    cleaned = {name: value for name, value in fields.items() if str(name).strip().lower() != key}
-    if cleaned != fields:
-        lead["fields"] = cleaned
-
-
-def _text(value, key):
-    text = str(value or "").strip()
-    limit = _LIMITS[key]
-    if len(text) > limit:
-        raise ValueError(f"{key.replace('_', ' ').title()} must be {limit} characters or fewer.")
-    return text
-
-
-def _extra_fields(raw):
-    if raw in (None, ""):
-        return {}
-    if not isinstance(raw, dict):
-        raise ValueError("Extra fields must be an object.")
-    return _merged_fields({}, raw)
-
-
-def _merged_fields(current, raw):
-    if not isinstance(raw, dict):
-        raise ValueError("Extra fields must be an object.")
-    fields = dict(current or {})
-    for key, value in raw.items():
-        label = str(key or "").strip()
-        text = str(value or "").strip()
-        if not label:
-            continue
-        if not text:
-            fields.pop(label, None)
-            continue
-        if len(label) > 120 or len(text) > 500:
-            raise ValueError("Each extra field name must be 120 characters or fewer, and each value 500 or fewer.")
-        fields[label] = text
-    if len(fields) > 40:
-        raise ValueError("A prospect can have at most 40 extra fields.")
-    return fields
-
-
-def _transcript(text):
-    if not text:
-        return []
-    return [{
-        "id": str(uuid.uuid4()),
-        "timestamp": utc_now().isoformat(),
-        "speaker": "Agent",
-        "text": text,
-    }]
+    return False

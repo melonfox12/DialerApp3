@@ -62,10 +62,10 @@ def archive_record_from_lead(lead, entry):
     return {
         "id": _record_id(lead_id, normalized),
         "lead_id": lead_id,
-        "name": lead.get("name") or "",
+        "name": lead.get("contact_name") or "",
         "phone": lead.get("phone") or "",
-        "business": lead.get("business") or "",
-        "review_count": lead.get("review_count"),
+        "business": lead.get("company") or "",
+        "review_count": lead.get("lead_score"),
         "timezone": lead.get("timezone") or "",
         "status": canonical_status(lead.get("status", "new")),
         "transcript": [dict(item) for item in (lead.get("transcript") or [])],
@@ -144,10 +144,10 @@ def archive_record_from_csv_row(row):
 def pseudo_lead_from_archive(record):
     return {
         "id": record.get("lead_id") or "",
-        "name": record.get("name") or "",
+        "contact_name": record.get("name") or "",
+        "company": record.get("business") or "",
         "phone": record.get("phone") or "",
-        "business": record.get("business") or "",
-        "review_count": record.get("review_count"),
+        "lead_score": record.get("review_count"),
         "timezone": record.get("timezone") or "",
         "status": record.get("status") or "new",
         "transcript": record.get("transcript") or [],

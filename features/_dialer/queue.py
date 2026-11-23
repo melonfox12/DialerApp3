@@ -10,6 +10,7 @@ from features._dialer import calls, slots, timing, voice_session
 from features._dialer import projection, rules, twilio
 from features._dialer.rules import new_session, session_summary
 from shared.infra import utc_now
+from shared.prospect_schema import display_name
 from features._prospects.migration_flags import mark_migration_done, migration_done
 from shared.vocabulary import (
     CALLER_ID_GROUPS,
@@ -474,7 +475,7 @@ def pass_next(state, lead_id=None):
         if state.queue_anchor_id == lead_id:
             state.queue_anchor_id = None
     should_fill, should_advance = drop_prospect_call(state, lead_id)
-    name = lead.get("name") or lead.get("business") or "Prospect"
+    name = display_name(lead)
     state.record_activity(f"Skipped {name}", "web")
     if should_fill:
         slots.fill_slots(state)
@@ -484,7 +485,7 @@ def pass_next(state, lead_id=None):
 
 def dial_lead(state, lead_id):
     lead = calls._dialable_lead(state, lead_id)
-    name = lead.get("name") or lead.get("phone") or "Prospect"
+    name = display_name(lead)
     with state.lock:
         running = state.running
     if not running:

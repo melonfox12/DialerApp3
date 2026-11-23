@@ -8,6 +8,7 @@ import {
   DIAL_POOL_STATUSES,
   DIAL_POOL_STATUS_LABELS,
   dialerEls,
+  prospectDisplayName,
   setText,
 } from "../../_core/format.js";
 import { appendNotesCell, notesEditorFocused } from "../../_core/notes.js";
@@ -31,7 +32,7 @@ function industryFilterOptions() {
   }
   const seen = new Map();
   for (const lead of state.leads || []) {
-    const value = String(lead.business_type || "").trim();
+    const value = String(lead.category || "").trim();
     if (!value) continue;
     const folded = value.toLowerCase();
     if (!seen.has(folded)) seen.set(folded, value);
@@ -192,13 +193,13 @@ export function renderCallerPool() {
     const contact = document.createElement("div");
     contact.className = "contact-copy";
     const name = document.createElement("strong");
-    name.textContent = lead.name || "Unnamed prospect";
+    name.textContent = lead.contact_name || "Unnamed prospect";
     const detail = document.createElement("span");
-    detail.textContent = lead.business || "Prospect";
+    detail.textContent = lead.company || prospectDisplayName(lead);
     contact.append(name, detail);
     prospect.append(contact);
     row.append(prospect);
-    for (const value of [lead.business || "—", lead.phone || "—", lead.timezone || "Unknown"]) {
+    for (const value of [lead.company || "—", lead.phone || "—", lead.timezone || "Unknown"]) {
       const cell = document.createElement("td");
       cell.textContent = value;
       if (value === lead.phone) cell.className = "phone-cell";

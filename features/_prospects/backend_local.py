@@ -2,17 +2,14 @@
 
 import json
 import threading
+import uuid
 from datetime import datetime
 from pathlib import Path
 
 from features._prospects.csv_export import csv_bytes_for
-from features._prospects.csv_import import (
-    apply_business_type_default_to_lead,
-    apply_pitch_segment_from_fields,
-    build_manual_lead,
-    parse_csv,
-)
+from features._prospects.csv_import import build_manual_lead, parse_csv
 from shared.infra import utc_now
+from shared.prospect_schema import active_leads
 
 PART_LINE_LIMIT = 150
 
@@ -83,15 +80,7 @@ class LocalBackend:
                     self.leads = data if isinstance(data, list) else []
             except (OSError, json.JSONDecodeError):
                 self.leads = []
-            changed = False
-            for lead in self.leads:
-                if apply_business_type_default_to_lead(lead):
-                    changed = True
-                if apply_pitch_segment_from_fields(lead):
-                    changed = True
             self.expire_due(save=False)
-            if changed:
-                self.save()
 
     def save(self):
         with self.lock:
@@ -143,6 +132,8 @@ class LocalBackend:
         with self.lock:
             self.expire_due(save=False)
             lead = build_manual_lead(payload, (item["phone"] for item in self.leads))
+            if not lead.get("id"):
+                lead["id"] = str(uuid.uuid4())
             self.leads.append(lead)
             self.save()
             return dict(lead)
@@ -151,10 +142,13 @@ class LocalBackend:
         with self.lock:
             self.expire_due(save=False)
             leads, info = parse_csv(data, (lead["phone"] for lead in self.leads))
+            for lead in leads:
+                if not lead.get("id"):
+                    lead["id"] = str(uuid.uuid4())
             self.leads.extend(leads)
             self.save()
             info["added"] = len(leads)
-            info["total"] = len(self.leads)
+            info["total"] = len(active_leads(self.leads))
             return info
 
 
@@ -176,8 +170,8 @@ class LocalBackend:
 
     def remove(self, lead_id):
         with self.lock:
-            original_count = len(self.leads)
-            self.leads = [lead for lead in self.leads if lead["id"] != lead_id]
-            if len(self.leads) == original_count:
+            lead = next((item for item in self.leads if item["id"] == lead_id), None)
+            if lead is None:
                 raise KeyError("Prospect not found")
+            lead["archived_at"] = utc_now().isoformat()
             self.save()

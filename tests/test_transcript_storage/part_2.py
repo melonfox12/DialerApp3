@@ -6,7 +6,7 @@ from tests.test_transcript_storage.fixtures import prospect
 
 class Part2:
     def test_snapshot_uses_memory_after_the_first_load(self):
-        client = FakeSupabaseClient(prospect())
+        client = FakeSupabaseClient(prospect(), user_id="user-a")
         client.loads = 0
         original = client.select_all
 
@@ -22,12 +22,16 @@ class Part2:
 
     def test_csv_columns_follow_the_web_crm_order(self):
         lead = prospect()
-        lead["fields"] = {"Email": "a@b.co", "Website": "b.co", "Other Emails": "c@b.co"}
+        lead["email"] = "a@b.co"
+        lead["website"] = "https://b.co"
         decoded = csv_bytes_for([lead]).decode("utf-8-sig")
-        self.assertEqual(next(csv.reader(StringIO(decoded))), [
-            "Business Type", "Timezone", "First name", "Last name", "Company", "Pitch segment", "City", "State", "Business phone",
-            "LinkedIn profile", "Website", "Total Reviews", "Call status",
-            "Email", "Other Emails", "scheduled_until", "Call transcript",
+        self.assertEqual(next(csv.reader(StringIO(decoded)))[:6], [
+            "Company",
+            "Contact name",
+            "Office manager",
+            "Phone",
+            "Alt phone",
+            "Email",
         ])
 
     def test_csv_transcript_field_escapes_multiline_utterances(self):

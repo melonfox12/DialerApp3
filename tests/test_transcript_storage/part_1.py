@@ -16,40 +16,40 @@ class Part1:
         with tempfile.TemporaryDirectory() as directory:
             crm = ProspectStore(Path(directory) / "crm.json")
             lead = crm.add_lead({
-                "name": "Ada Lovelace",
-                "business": "Analytical Engines",
+                "contact_name": "Ada Lovelace",
+                "company": "Analytical Engines",
                 "phone": "(202) 555-0142",
                 "timezone": "Pacific",
                 "status": "contact_engaged",
                 "transcript": "Asked for a follow-up.",
-                "fields": {"Email": "ada@example.com"},
+                "email": "ada@example.com",
             })
             self.assertEqual(lead["phone"], "+12025550142")
             self.assertEqual(lead["timezone"], "Pacific")
             saved = ProspectStore(Path(directory) / "crm.json").snapshot()[0]
-            self.assertEqual(saved["name"], "Ada Lovelace")
-            self.assertEqual(saved["business"], "Analytical Engines")
+            self.assertEqual(saved["contact_name"], "Ada Lovelace")
+            self.assertEqual(saved["company"], "Analytical Engines")
             self.assertEqual(saved["status"], "contact_engaged")
-            self.assertEqual(saved["fields"]["Email"], "ada@example.com")
+            self.assertEqual(saved["email"], "ada@example.com")
             self.assertEqual(saved["transcript"][0]["text"], "Asked for a follow-up.")
             with self.assertRaises(ValueError):
-                crm.add_lead({"name": "Duplicate", "phone": "202-555-0142"})
+                crm.add_lead({"contact_name": "Duplicate", "phone": "202-555-0142"})
             with self.assertRaises(ValueError):
-                crm.add_lead({"name": "No phone"})
+                crm.add_lead({"contact_name": "No phone"})
 
     def test_supabase_manual_prospect_is_stored(self):
         client = FakeSupabaseClient(prospect())
         crm = ProspectStore(client=client, user_id="user-a")
         lead = crm.add_lead({
-            "name": "Grace Hopper",
-            "business": "Navy",
+            "contact_name": "Grace Hopper",
+            "company": "Navy",
             "phone": "4155550199",
             "status": "dialed",
         })
         self.assertEqual(lead["phone"], "+14155550199")
         self.assertEqual(lead["status"], "dialed")
         self.assertTrue(lead["scheduled_until"])
-        self.assertEqual(client.leads[lead["id"]]["name"], "Grace Hopper")
+        self.assertEqual(client.leads[lead["id"]]["contact_name"], "Grace Hopper")
         self.assertEqual(client.users[lead["id"]], "user-a")
 
     def test_local_transcript_is_persisted_and_exported_in_crm_csv(self):
@@ -253,32 +253,32 @@ class Part1:
         self.assertEqual(info["skipped"], 0)
         self.assertTrue(leads[0]["phone"].startswith("+"))
         self.assertEqual(leads[0]["timezone"], "Eastern")
-        self.assertEqual(leads[0]["name"], "Daniel Edwards")
+        self.assertEqual(leads[0]["contact_name"], "Daniel Edwards")
 
     def test_local_csv_import_persists_prospects(self):
         with tempfile.TemporaryDirectory() as directory:
             crm = ProspectStore(Path(directory) / "crm.json")
-            info = crm.add_csv(b"Name,Business Name,Phone Number,Timezone\nAda,Co,(202) 555-0100,Pacific\n")
+            info = crm.add_csv(b"Prospect,Company,Phone,Timezone\nAda,Co,(202) 555-0100,Pacific\n")
             self.assertEqual(info["added"], 1)
             saved = ProspectStore(Path(directory) / "crm.json").snapshot()[0]
             self.assertEqual(saved["phone"], "+12025550100")
             self.assertEqual(saved["timezone"], "Pacific")
 
     def test_supabase_csv_import_posts_prospect_rows(self):
-        client = FakeSupabaseClient(prospect())
-        crm = ProspectStore(client=client)
-        info = crm.add_csv(b"Name,Phone\nSam,+1 202 555 0199\n")
+        client = FakeSupabaseClient(prospect(), user_id="user-a")
+        crm = ProspectStore(client=client, user_id="user-a")
+        info = crm.add_csv(b"Prospect,Phone\nSam,+1 202 555 0199\n")
         self.assertEqual(info["added"], 1)
         self.assertEqual(info["duplicates"], 0)
         imported = next(lead for lead in client.leads.values() if lead["phone"] == "+12025550199")
-        self.assertEqual(imported["name"], "Sam")
+        self.assertEqual(imported["contact_name"], "Sam")
 
     def test_supabase_csv_import_is_scoped_to_the_signed_in_user(self):
-        client = FakeSupabaseClient(prospect())
+        client = FakeSupabaseClient(prospect(), user_id="user-a")
         other = ProspectStore(client=client, user_id="user-b")
-        other.add_csv(b"Name,Phone\nOther,+1 202 555 0101\n")
+        other.add_csv(b"Prospect,Phone\nOther,+1 202 555 0101\n")
         mine = ProspectStore(client=client, user_id="user-a")
-        info = mine.add_csv(b"Name,Phone\nMine,+1 202 555 0102\n")
+        info = mine.add_csv(b"Prospect,Phone\nMine,+1 202 555 0102\n")
         self.assertEqual(info["added"], 1)
         phones = [lead["phone"] for lead in mine.snapshot()]
         self.assertEqual(phones, ["+12025550102"])

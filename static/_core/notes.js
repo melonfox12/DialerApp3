@@ -1,9 +1,7 @@
 import { postJson } from "./api.js";
-import { byId, MARKETING_TOUCHES_FIELD } from "./format.js";
+import { byId, MARKETING_TOUCHES_FIELD, prospectDisplayName } from "./format.js";
 import { applyMutationPayload } from "./sync-state.js";
 import { showToast } from "./notify.js";
-
-export const NOTES_FIELD = "Notes";
 
 const TOUCH_KIND_ALIASES = {
   call: "called",
@@ -40,28 +38,8 @@ export function touchTimestampFromDateInput(value) {
   return Number.isFinite(t) ? t : Date.now();
 }
 
-export function leadMarketingTouches(lead) {
-  const fields = lead?.fields || {};
-  let raw = null;
-  for (const [name, value] of Object.entries(fields)) {
-    if (String(name).trim().toLowerCase() === MARKETING_TOUCHES_FIELD.toLowerCase()) {
-      raw = value;
-      break;
-    }
-  }
-  if (raw == null) return [];
-  if (Array.isArray(raw)) {
-    return raw.map(normalizeTouchEntry).filter(Boolean);
-  }
-  const text = String(raw).trim();
-  if (!text) return [];
-  try {
-    const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeTouchEntry).filter(Boolean);
-  } catch {
-    return [];
-  }
+export function leadMarketingTouches() {
+  return [];
 }
 
 const MARKETING_TOUCHES_VALUE_MAX = 480;
@@ -83,39 +61,27 @@ export function sortedMarketingTouchesChronological(lead) {
 }
 
 export async function persistMarketingTouches(lead, touches, disableTarget) {
+  void MARKETING_TOUCHES_FIELD;
   const stored = trimTouchesForStorage(touches);
   if (stored === null) {
     showToast("Touch history is too long to save. Remove some entries.", true);
     return false;
   }
-  const payload = { fields: { [MARKETING_TOUCHES_FIELD]: JSON.stringify(stored) } };
-  if (disableTarget) disableTarget.disabled = true;
-  try {
-    const result = await postJson(`/api/leads/${encodeURIComponent(lead.id)}/fields`, payload);
-    await applyMutationPayload(result);
-    return true;
-  } catch (error) {
-    showToast(error?.message || "Could not save touches.", true);
-    return false;
-  } finally {
-    if (disableTarget?.isConnected) disableTarget.disabled = false;
-  }
+  showToast("Marketing touches are not stored on this prospect shape.", true);
+  return false;
 }
 
 export function leadNotes(lead) {
-  for (const [name, value] of Object.entries(lead?.fields || {})) {
-    if (name.trim().toLowerCase() === "notes") return String(value || "").trim();
-  }
-  return "";
+  return String(lead?.score_reasons || "").trim();
 }
 
 export function notesLeadLabel(lead) {
-  return lead?.name || lead?.business || lead?.phone || "Prospect";
+  return prospectDisplayName(lead);
 }
 
 export async function persistLeadNotes(lead, text, input) {
   const trimmed = String(text ?? "").trim();
-  const payload = { fields: { [NOTES_FIELD]: trimmed } };
+  const payload = { score_reasons: trimmed };
   if (input) input.disabled = true;
   try {
     const result = await postJson(`/api/leads/${encodeURIComponent(lead.id)}/fields`, payload);
@@ -158,8 +124,7 @@ function bindNotesEditor(textarea, lead) {
     document.dispatchEvent(new CustomEvent("prospect-field", {
       detail: {
         lead,
-        field: "fields",
-        extra: NOTES_FIELD,
+        field: "score_reasons",
         value: trimmed,
         previous: textarea.dataset.savedValue,
         input: textarea,

@@ -55,10 +55,10 @@ function dialsCsvText(rows) {
     const connectedText = connected === true ? "true" : connected === false ? "false" : "";
     const record = [
       entry.ended_at || entry.started_at || "",
-      lead?.name || "",
+      lead?.contact_name || "",
       lead?.phone || "",
-      lead?.business || "",
-      lead?.review_count ?? "",
+      lead?.company || "",
+      lead?.lead_score ?? "",
       formatTranscriptCsvCell(lead?.transcript),
       lead?.status || "",
       leadId,
@@ -369,7 +369,7 @@ function paintDialsTable(bodyId, tableId, emptyId, rows, { readOnly }) {
     row.append(cell(dialWhen(entry.ended_at || entry.started_at)));
     row.append(prospectCell(focusId, displayLead, removed, readOnly));
     row.append(phoneCell(displayLead));
-    row.append(cell(displayLead?.business || "—"));
+    row.append(cell(displayLead?.company || "—"));
     row.append(cell(reviewText(displayLead)));
     row.append(notesCell(crmLead, snapshot, crmDeleted, readOnly || removed));
     row.append(transcriptCell(focusId, displayLead, entry));
@@ -384,10 +384,10 @@ function archivedLead(record) {
   if (!record) return null;
   return {
     id: record.lead_id || "",
-    name: record.name || "",
+    contact_name: record.name || "",
     phone: record.phone || "",
-    business: record.business || "",
-    review_count: record.review_count,
+    company: record.business || "",
+    lead_score: record.review_count,
     timezone: record.timezone || "",
     status: record.status || "new",
     transcript: record.transcript || [],
@@ -412,7 +412,7 @@ function normalizePhone(raw) {
 }
 
 function dialIdentityKey(lead) {
-  const name = foldText(lead?.name);
+  const name = foldText(lead?.contact_name);
   if (!name) return null;
   const city = foldText(locationText(lead, "city"));
   const stateName = foldText(locationText(lead, "state"));
@@ -453,10 +453,10 @@ function dialsTableSignature(rows) {
       crmDeleted ? "0" : "1",
       crmLead?.id || "",
       entry.ended_at || entry.started_at || "",
-      statusLead?.name || "",
+      statusLead?.contact_name || "",
       statusLead?.phone || "",
-      statusLead?.business || "",
-      String(statusLead?.review_count ?? ""),
+      statusLead?.company || "",
+      String(statusLead?.lead_score ?? ""),
       String(segmentsForDial(statusLead, entry).length),
       leadNotes(statusLead),
       statusLead?.status || "",
@@ -516,7 +516,7 @@ function dialWhen(iso) {
 }
 
 function reviewText(lead) {
-  const count = lead?.review_count;
+  const count = lead?.lead_score;
   if (count === 0 || count) return String(count);
   return "—";
 }
@@ -526,7 +526,7 @@ function prospectCell(leadId, lead, crmDeleted, readOnly = false) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = crmDeleted ? "dial-prospect-link dial-prospect-link--removed" : "dial-prospect-link";
-  const name = lead?.name || "Unnamed prospect";
+  const name = lead?.contact_name || "Unnamed prospect";
   button.textContent = name;
   if (readOnly) {
     button.disabled = true;

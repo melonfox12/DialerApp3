@@ -48,8 +48,8 @@ class ApiContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             crm = ProspectStore(Path(directory) / "crm.json")
             crm.add_lead({
-                "name": "Ada",
-                "business": "Shop",
+                "contact_name": "Ada",
+                "company": "Shop",
                 "phone": "+12025550123",
                 "timezone": "Eastern",
             })
@@ -92,8 +92,8 @@ class ApiContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             crm = ProspectStore(Path(directory) / "crm.json")
             crm.add_lead({
-                "name": "Ada",
-                "business": "Shop",
+                "contact_name": "Ada",
+                "company": "Shop",
                 "phone": "+12025550123",
                 "timezone": "Eastern",
             })

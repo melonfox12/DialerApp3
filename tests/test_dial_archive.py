@@ -16,8 +16,8 @@ class DialArchiveTests(unittest.TestCase):
             crm = ProspectStore(root / "crm")
             archive = DialArchiveStore(crm_path=root / "crm")
             lead = crm.add_lead({
-                "name": "Ada",
-                "business": "Shop",
+                "contact_name": "Ada",
+                "company": "Shop",
                 "phone": "+12025550111",
                 "timezone": "Eastern",
             })
@@ -46,7 +46,7 @@ class DialArchiveTests(unittest.TestCase):
             crm = ProspectStore(root / "crm")
             archive = DialArchiveStore(crm_path=root / "crm")
             lead = crm.add_lead({
-                "name": "Ada",
+                "contact_name": "Ada",
                 "phone": "+12025550111",
                 "timezone": "Eastern",
             })

@@ -3,6 +3,7 @@
 import threading
 
 from features._dialer import calls, rules, voice_session
+from shared.prospect_schema import display_name
 
 AGENT_LINE_CAP = 3
 
@@ -101,7 +102,7 @@ def _place_prospect_call(state):
     if none_ready:
         state.record_activity("No prospect was ready to dial", "call")
     for call, destination in launches:
-        name = (call.get("lead") or {}).get("name") or "prospect"
+        name = display_name(call.get("lead") or {})
         state.record_activity(f"Dialing {name}", "call")
         calls._launch_call(state, call, destination)
     rules._flush_metrics(state)

@@ -14,6 +14,7 @@ PARTIALS = (
     STATIC / "features" / "session-summary-dialog.html",
     STATIC / "features" / "performance.html",
     STATIC / "features" / "pipeline.html",
+    STATIC / "features" / "workflow.html",
     STATIC / "features" / "prospects.html",
     STATIC / "features" / "settings.html",
     STATIC / "shell-end.html",

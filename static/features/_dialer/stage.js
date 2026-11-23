@@ -20,16 +20,22 @@ export function renderCallStage(stage, target) {
   const detail = document.createElement("span");
   if (stage === "connected" && target) {
     heading.textContent = state.pickup_answered_by === "voicemail" ? "VOICEMAIL" : "LIVE";
-    const name = target.name || target.business || formatPhoneNumber(target.phone) || "Prospect";
+    const name = target.contact_name || target.company || formatPhoneNumber(target.phone) || "Prospect";
     const nameElement = document.createElement("p");
     nameElement.className = "call-prospect-name";
     nameElement.textContent = name;
     fragment.append(nameElement);
-    if (target.business && target.business !== name) {
+    if (target.company && target.company !== name) {
       const business = document.createElement("span");
       business.className = "call-prospect-business";
-      business.textContent = target.business;
+      business.textContent = target.company;
       fragment.append(business);
+    }
+    if (target.signal) {
+      const signal = document.createElement("p");
+      signal.className = "call-prospect-signal";
+      signal.textContent = `Signal: ${target.signal}`;
+      fragment.append(signal);
     }
     const meta = document.createElement("span");
     meta.className = "call-prospect-meta";
@@ -49,11 +55,10 @@ export function renderCallStage(stage, target) {
     timer.textContent = "0:00";
     meta.append(timer);
     fragment.append(meta);
-    const notesEntry = Object.entries(target.fields || {}).find(([key, value]) => /notes?/i.test(key) && String(value || "").trim());
-    if (notesEntry) {
+    if (target.score_reasons) {
       const notes = document.createElement("span");
       notes.className = "call-prospect-notes";
-      notes.textContent = String(notesEntry[1]);
+      notes.textContent = String(target.score_reasons);
       fragment.append(notes);
     }
     const script = document.createElement("span");
@@ -66,23 +71,23 @@ export function renderCallStage(stage, target) {
     detail.textContent = "Resume when you’re ready to continue the queue.";
   } else if (stage === "wrapup" && target) {
     heading.textContent = "Call complete";
-    detail.textContent = `Choose a disposition for ${target.business || target.name || formatPhoneNumber(target.phone)}.`;
+    detail.textContent = `Choose a disposition for ${target.company || target.contact_name || formatPhoneNumber(target.phone)}.`;
   } else if (stage === "dialing" || stage === "ringing") {
     const calls = state.in_flight || [];
     heading.textContent = stage === "ringing" ? "Ring in progress" : "Dialing next prospect";
-    detail.textContent = calls.map((call) => `${call.lead?.business || call.lead?.name || "Prospect"} · ${call.state === "ringing" ? "Ringing" : "Dialing"}`).join(" · ") || state.last_event || "Connecting to the next prospect…";
+    detail.textContent = calls.map((call) => `${call.lead?.company || call.lead?.contact_name || "Prospect"} · ${call.state === "ringing" ? "Ringing" : "Dialing"}`).join(" · ") || state.last_event || "Connecting to the next prospect…";
   } else if (stage !== "idle") {
     const next = state.next_lead;
     const clock = next ? localTimeLabel(next.timezone) : "";
-    const context = next && Object.entries(next.fields || {}).find(([key, value]) => /notes?/i.test(key) && value);
+    const context = next?.score_reasons;
     if (next) {
-      detail.append(`Next up: ${next.business || next.name || "Prospect"} · ${formatPhoneNumber(next.phone)} · ${clock || next.timezone || "Local time unavailable"} · `);
+      detail.append(`Next up: ${next.company || next.contact_name || "Prospect"} · ${formatPhoneNumber(next.phone)} · ${clock || next.timezone || "Local time unavailable"} · `);
       const status = document.createElement("span");
       const countdown = next.status === "dialed" && next.scheduled_until;
       status.dataset.callbackPrefix = "Status: Dialed ";
       status.textContent = countdown ? `Status: ${callbackStatusText(next)}` : `Status: ${STATUS_LABELS[next.status] || "New"}`;
       if (countdown && !context) markCallback(status, next);
-      detail.append(context ? `Context: ${context[1]}` : status);
+      detail.append(context ? `Context: ${context}` : status);
     } else {
       detail.textContent = "No prospects available in this queue.";
     }

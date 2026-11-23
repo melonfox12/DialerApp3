@@ -1,5 +1,5 @@
 import { state } from "../../_core/state.js";
-import { dialerEls } from "../../_core/format.js";
+import { dialerEls, prospectDisplayName } from "../../_core/format.js";
 import { formatPhoneNumber } from "../../_core/phone.js";
 
 export function renderQueueStrip() {
@@ -42,7 +42,7 @@ function prospectCard(line) {
   card.className = "power-line";
   card.dataset.tone = line.tone;
   const name = document.createElement("strong");
-  name.textContent = line.lead.name || line.lead.business || "Prospect";
+  name.textContent = prospectDisplayName(line.lead);
   card.append(name);
   const place = prospectPlace(line.lead);
   if (place) {
@@ -106,27 +106,22 @@ function prospectPlace(lead) {
 }
 
 function reviewCount(lead) {
-  const count = lead?.review_count;
+  const count = lead?.lead_score;
   if (count === 0 || count) {
     const total = Number(count);
     if (!Number.isFinite(total)) return String(count);
-    return `${total} review${total === 1 ? "" : "s"}`;
+    return `score ${total}`;
   }
   return "";
 }
 
 function locationOf(lead, key) {
-  const direct = String(lead?.[key] || "").trim();
-  if (direct) return direct;
-  for (const [name, value] of Object.entries(lead?.fields || {})) {
-    if (name.trim().toLowerCase() === key) return String(value || "").trim();
-  }
-  return "";
+  return String(lead?.[key] || "").trim();
 }
 
 export function nextProspectLabel(lead) {
-  const business = String(lead.business || "").trim();
-  const firstName = String(lead.name || "").trim().split(/\s+/)[0] || "";
+  const business = String(lead.company || "").trim();
+  const firstName = String(lead.contact_name || "").trim().split(/\s+/)[0] || "";
   if (firstName && business) return `${firstName} - ${business}`;
-  return business || lead.name || formatPhoneNumber(lead.phone) || "";
+  return business || prospectDisplayName(lead) || formatPhoneNumber(lead.phone) || "";
 }

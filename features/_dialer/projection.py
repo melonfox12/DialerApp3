@@ -6,6 +6,7 @@ from features import ai_agents, ai_voice_runtime
 from shared.dial_policy import global_dialer_pool, leads_for_timezone_counts, resolve_pool_status, unique_business_types
 from shared.vocabulary import resolve_caller_id_group
 from shared.infra import utc_now
+from shared.prospect_schema import display_name
 
 def crm_catalog(state, leads=None):
     """Lead rows plus derived pool, timezone counts, and summary counts."""
@@ -80,7 +81,7 @@ def public_state(state, include_leads=False):
         records = [
             {
                 "lead_id": call["lead_id"],
-                "name": (call.get("lead") or {}).get("name") or (call.get("lead") or {}).get("business"),
+                "name": display_name(call.get("lead") or {}),
                 "state": call["state"],
                 "caller_id": call.get("caller_id") or "",
                 "answered_by": call.get("answered_by") or "",

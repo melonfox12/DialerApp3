@@ -17,15 +17,15 @@ from shared.infra import utc_now
 def lead(**fields):
     base = {
         "id": "p1",
-        "name": "Ada",
-        "business": "Shop",
+        "contact_name": "Ada",
+        "company": "Shop",
         "phone": "+12025550123",
         "timezone": "Eastern",
         "status": "new",
         "scheduled_until": None,
         "transcript": [],
-        "fields": {},
         "call_log": [],
+        "category": "pest control",
     }
     base.update(fields)
     return base
@@ -34,8 +34,8 @@ def lead(**fields):
 class DialPolicyTests(unittest.TestCase):
     def test_pool_respects_business_type_filter(self):
         rows = [
-            lead(id="pest", business_type="pest control", name="Pest Co"),
-            lead(id="hvac", business_type="HVAC", name="Cool Co", phone="+12025550124"),
+            lead(id="pest", category="pest control", contact_name="Pest Co"),
+            lead(id="hvac", category="HVAC", contact_name="Cool Co", phone="+12025550124"),
         ]
         all_pool = pool_leads(rows, pool_status="new", busy_ids=set(), now=utc_now())
         self.assertEqual({item["id"] for item in all_pool}, {"pest", "hvac"})
@@ -50,28 +50,28 @@ class DialPolicyTests(unittest.TestCase):
 
     def test_unique_business_types_from_crm(self):
         rows = [
-            lead(business_type="Plumbing"),
-            lead(id="b", business_type="HVAC", phone="+12025550125"),
-            lead(id="c", business_type="plumbing", phone="+12025550126"),
+            lead(category="Plumbing"),
+            lead(id="b", category="HVAC", phone="+12025550125"),
+            lead(id="c", category="plumbing", phone="+12025550126"),
         ]
         self.assertEqual(unique_business_types(rows), ["HVAC", "Plumbing"])
 
     def test_new_pool_includes_static_callbacks_not_timed(self):
         now = utc_now()
         rows = [
-            lead(id="new1", name="New Person", business="Alpha Co", phone="+12025550121"),
+            lead(id="new1", contact_name="New Person", company="Alpha Co", phone="+12025550121"),
             lead(
                 id="cb_ready",
-                name="Callback Ready",
-                business="Beta Co",
+                contact_name="Callback Ready",
+                company="Beta Co",
                 status="dialed",
                 scheduled_until=None,
                 phone="+12025550122",
             ),
             lead(
                 id="cb_wait",
-                name="Callback Waiting",
-                business="Gamma Co",
+                contact_name="Callback Waiting",
+                company="Gamma Co",
                 status="dialed",
                 scheduled_until=(now + timedelta(hours=1)).isoformat(),
                 phone="+12025550123",
@@ -82,8 +82,8 @@ class DialPolicyTests(unittest.TestCase):
 
     def test_pool_respects_send_info_mode(self):
         rows = [
-            lead(id="n", status="new", name="New Person"),
-            lead(id="s", status="contact_engaged", name="Info Person", phone="+12025550124"),
+            lead(id="n", status="new", contact_name="New Person"),
+            lead(id="s", status="contact_engaged", contact_name="Info Person", phone="+12025550124"),
         ]
         new_pool = pool_leads(rows, pool_status="new", busy_ids=set(), now=utc_now())
         info_pool = pool_leads(rows, pool_status="contact_engaged", busy_ids=set(), now=utc_now())

@@ -1,17 +1,18 @@
 import { postJson } from "../../_core/api.js";
 import { applyMutationPayload } from "../../_core/sync-state.js";
-import { CRM_STATUS_KEYS, CRM_STATUS_LABELS, byId, fillTimezoneSelect } from "../../_core/format.js";
+import { CRM_STATUS_KEYS, CRM_STATUS_LABELS, byId, fillTimezoneSelect, prospectDisplayName } from "../../_core/format.js";
 import { showToast } from "../../_core/notify.js";
-import { importedColumns } from "./query.js";
 import { render } from "../../core.js";
 
 const STANDARD_FIELDS = [
-  ["business_type", "Business Type", "text", "pest control"],
-  ["name", "Prospect", "text", ""],
-  ["business", "Company", "text", ""],
-  ["state", "State", "text", ""],
+  ["company", "Company", "text", ""],
+  ["contact_name", "Contact name", "text", ""],
+  ["office_manager", "Office manager", "text", ""],
+  ["category", "Category", "text", "pest control"],
   ["city", "City", "text", ""],
-  ["phone", "Phone Number", "tel", ""],
+  ["state", "State", "text", ""],
+  ["phone", "Phone number", "tel", ""],
+  ["lead_tier", "Lead tier", "text", "C"],
   ["timezone", "Timezone", "timezone", ""],
 ];
 
@@ -34,11 +35,7 @@ function openAddProspectDialog() {
   for (const [name, label, type, placeholder] of STANDARD_FIELDS) {
     fields.append(type === "timezone" ? timezoneField() : textField(name, label, { type, placeholder, required: name === "phone" }));
   }
-  for (const column of importedColumns()) {
-    fields.append(textField(`extra:${column}`, column, { extra: column }));
-  }
   fields.append(statusField());
-  fields.append(textField("transcript", "Call transcript", { multiline: true }));
   const error = byId("addProspectError");
   error.hidden = true;
   error.textContent = "";
@@ -55,20 +52,13 @@ function textField(name, label, options = {}) {
   wrap.className = "form-field";
   const title = document.createElement("span");
   title.textContent = label;
-  const input = document.createElement(options.multiline ? "textarea" : "input");
+  const input = document.createElement("input");
   input.name = name;
   input.dataset.prospectField = name;
-  if (options.extra) input.dataset.extra = options.extra;
-  if (options.multiline) {
-    input.rows = 3;
-    input.maxLength = 4000;
-    input.placeholder = "Optional";
-  } else {
-    input.type = options.type || "text";
-    input.autocomplete = "off";
-    if (options.placeholder) input.placeholder = options.placeholder;
-    if (options.required) input.required = true;
-  }
+  input.type = options.type || "text";
+  input.autocomplete = "off";
+  if (options.placeholder) input.placeholder = options.placeholder;
+  if (options.required) input.required = true;
   wrap.append(title, input);
   return wrap;
 }
@@ -113,31 +103,26 @@ function fieldValue(name) {
 async function saveProspect() {
   const button = byId("saveAddProspect");
   const error = byId("addProspectError");
-  const fields = {};
-  for (const input of byId("addProspectFields").querySelectorAll("[data-extra]")) {
-    const value = input.value.trim();
-    if (value) fields[input.dataset.extra] = value;
-  }
   button.disabled = true;
   error.hidden = true;
   try {
     const result = await postJson("/api/leads", {
-      business_type: fieldValue("business_type"),
-      name: fieldValue("name"),
-      business: fieldValue("business"),
-      state: fieldValue("state"),
+      company: fieldValue("company"),
+      contact_name: fieldValue("contact_name"),
+      office_manager: fieldValue("office_manager"),
+      category: fieldValue("category"),
       city: fieldValue("city"),
+      state: fieldValue("state"),
       phone: fieldValue("phone"),
+      lead_tier: fieldValue("lead_tier"),
       timezone: fieldValue("timezone"),
       status: fieldValue("status"),
-      transcript: fieldValue("transcript"),
-      fields,
     });
     await applyMutationPayload(result);
     closeAddProspectDialog();
     render();
     const lead = result.lead || {};
-    showToast(`${lead.name || lead.phone || "Prospect"} added`);
+    showToast(`${prospectDisplayName(lead)} added`);
   } catch (saveError) {
     error.hidden = false;
     error.textContent = saveError?.message || "Could not add that prospect.";

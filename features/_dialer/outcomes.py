@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from features._dialer import queue, slots, timing
 from features._dialer import rules
 from features._dialer.rules import record_disposition, status_for_disposition
+from shared.prospect_schema import display_name
 from shared.vocabulary import (
     CALL_OUTCOME_KEYS,
     DEFAULT_OUTCOME_METRIC,
@@ -64,7 +65,7 @@ def end_call_with_status(state, lead_id, status, scheduled_until=None):
         if state.queue_anchor_id == lead_id:
             state.queue_anchor_id = None
     should_fill, should_advance = queue.drop_prospect_call(state, lead_id)
-    name = lead.get("name") or lead.get("business") or lead.get("phone") or "prospect"
+    name = display_name(lead)
     state.record_activity(f"{name} marked {status}", "web")
     with state.lock:
         state.last_event = f"{name} marked {status}"
@@ -149,7 +150,7 @@ def log_booking(state, lead_id, booked_at):
     else:
         _set_booked(state, lead_id)
         lead = state.crm.set_booked_at(lead_id, booked_at, replace_existing=True)
-    state.record_activity(f"Booking logged for {lead.get('name') or lead.get('business') or 'prospect'}", "web")
+    state.record_activity(f"Booking logged for {display_name(lead)}", "web")
     return lead
 
 def update_status(state, lead_id, status=None, scheduled_until=None, disposition=None, crm_only=False):
@@ -176,6 +177,6 @@ def update_status(state, lead_id, status=None, scheduled_until=None, disposition
     if crm_only:
         with state.lock:
             state.queue_anchor_id = lead_id
-        name = lead.get("name") or lead.get("business") or "prospect"
+        name = display_name(lead)
         state.record_activity(f"CRM status for {name} set to {status}", "web")
     return lead

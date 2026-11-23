@@ -9,10 +9,10 @@ class DialsExportTests(unittest.TestCase):
     def test_csv_includes_table_and_call_log_columns(self):
         leads = [{
             "id": "lead-1",
-            "name": "Ada",
+            "contact_name": "Ada",
             "phone": "+12025550111",
-            "business": "Shop",
-            "review_count": 12,
+            "company": "Shop",
+            "lead_score": 12,
             "status": "new",
             "timezone": "Eastern",
             "transcript": [{"timestamp": "2026-10-26T12:00:00+00:00", "speaker": "Agent", "text": "Hi"}],
@@ -43,7 +43,7 @@ class DialsExportTests(unittest.TestCase):
     def test_csv_transcript_field_escapes_multiline_utterances(self):
         leads = [{
             "id": "lead-1",
-            "name": "Ada",
+            "contact_name": "Ada",
             "phone": "+12025550111",
             "status": "new",
             "transcript": [

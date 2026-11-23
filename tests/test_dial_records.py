@@ -15,7 +15,7 @@ class DialRecordsTests(unittest.TestCase):
             archive = DialArchiveStore(crm_path=root / "crm")
             records = DialRecordsStore(crm_path=root / "crm")
             lead = crm.add_lead({
-                "name": "Ada",
+                "contact_name": "Ada",
                 "phone": "+12025550111",
                 "timezone": "Eastern",
             })
@@ -42,7 +42,7 @@ class DialRecordsTests(unittest.TestCase):
             crm = ProspectStore(root / "crm")
             archive = DialArchiveStore(crm_path=root / "crm")
             records = DialRecordsStore(crm_path=root / "crm")
-            crm.add_lead({"name": "Ada", "phone": "+12025550111", "timezone": "Eastern"})
+            crm.add_lead({"contact_name": "Ada", "phone": "+12025550111", "timezone": "Eastern"})
             with self.assertRaises(ValueError):
                 snapshot_active_dials(crm, archive, records)
 

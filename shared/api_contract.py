@@ -152,25 +152,54 @@ COUNTS_KEYS = ("booked", "calling", "new", "total")
 # --- CRM lead row (GET /api/leads → leads[], pool[], active_lead, etc.) ---
 
 LEAD_KEYS = (
-    "business",
-    "fields",
     "id",
-    "name",
+    "company",
+    "contact_name",
+    "office_manager",
     "phone",
-    "scheduled_until",
+    "alt_phone",
+    "email",
+    "street",
+    "city",
+    "state",
+    "zip",
+    "lead_tier",
+    "lead_score",
+    "score_reasons",
+    "signal",
+    "signal_date",
+    "days_since_signal",
+    "category",
+    "property_type",
+    "hygiene_focus",
+    "website",
     "status",
+    "scheduled_until",
     "timezone",
     "transcript",
+    "call_log",
 )
 
 LEAD_OPTIONAL_KEYS = (
-    "booked_at",
-    "call_log",
-    "passed_at",
-    "pipeline_history",
+    "now_open_or_moved",
+    "county",
+    "providers_listed",
+    "source",
+    "source_file",
+    "property_verdict",
+    "residential_check",
+    "remote_or_mobile",
+    "shared_address",
+    "suite_in_address",
     "pipeline_step",
     "pipeline_step_entered_at",
+    "pipeline_history",
     "status_history",
+    "booked_at",
+    "passed_at",
+    "agent_reserved_name",
+    "agent_reserved_id",
+    "archived_at",
 )
 
 CALL_LOG_ENTRY_KEYS = (
@@ -238,18 +267,37 @@ class LeadRecord(TypedDict, total=False):
     """Prospect row returned from the CRM catalog and embedded in dialer state."""
 
     id: str
-    name: str
-    business: str
+    company: str
+    contact_name: str
+    office_manager: str
     phone: str
+    alt_phone: str | None
+    email: str
+    street: str
+    city: str
+    state: str
+    zip: str
+    lead_tier: str
+    lead_score: float | None
+    score_reasons: str
+    signal: str
+    signal_date: str | None
+    days_since_signal: int | None
+    category: str
+    property_type: str
+    hygiene_focus: str
+    website: str
     timezone: str
     status: str
     scheduled_until: str | None
     transcript: list
-    fields: dict
     call_log: list
     booked_at: str | None
     passed_at: str | None
     status_history: list
+    pipeline_step: str | None
+    pipeline_step_entered_at: str | None
+    pipeline_history: list
 
 
 class DialerStateResponse(TypedDict, total=False):

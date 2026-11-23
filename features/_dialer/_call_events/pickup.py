@@ -10,10 +10,11 @@ from features._dialer import slots
 from features._dialer import twilio
 from features._dialer._call_events import transcript
 from features._dialer.rules import add_connect
+from shared.prospect_schema import display_name
 
 def _name(call):
     lead = call.get("lead") or {}
-    return lead.get("name") or lead.get("phone") or "prospect"
+    return display_name(lead) if lead else "prospect"
 
 def _drop_line(state, call, answered_by):
     """Hang up a line that will not reach the agent and log it once.

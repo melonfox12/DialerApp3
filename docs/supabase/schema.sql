@@ -1,7 +1,52 @@
+-- Prospects: see docs/supabase/migrations/202611231700_prospect_restructure.sql
 create table if not exists public.prospects (
-    id text primary key,
-    user_id uuid,
-    data jsonb not null check (jsonb_typeof(data) = 'object')
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    archived_at timestamptz,
+    company text not null default '',
+    contact_name text not null default '',
+    office_manager text not null default '',
+    phone text not null default '',
+    alt_phone text,
+    email text not null default '',
+    street text not null default '',
+    city text not null default '',
+    state text not null default '',
+    zip text not null default '',
+    lead_tier text not null default 'C' check (lead_tier in ('A', 'B', 'C', 'D')),
+    lead_score numeric,
+    score_reasons text not null default '',
+    signal text not null default '',
+    signal_date date,
+    now_open_or_moved text not null default '',
+    category text not null default '',
+    property_type text not null default '',
+    hygiene_focus text not null default '',
+    website text not null default '',
+    county text not null default '',
+    providers_listed text not null default '',
+    source text not null default '',
+    source_file text not null default '',
+    property_verdict text not null default '',
+    residential_check text not null default '',
+    remote_or_mobile text not null default '',
+    shared_address boolean,
+    suite_in_address boolean,
+    status text not null default 'new',
+    scheduled_until timestamptz,
+    timezone text not null default 'Unknown',
+    transcript jsonb not null default '[]'::jsonb,
+    call_log jsonb not null default '[]'::jsonb,
+    pipeline_step text,
+    pipeline_step_entered_at timestamptz,
+    pipeline_history jsonb not null default '[]'::jsonb,
+    status_history jsonb not null default '[]'::jsonb,
+    booked_at timestamptz,
+    passed_at timestamptz,
+    agent_reserved_name text not null default '',
+    agent_reserved_id text not null default ''
 );
 
 create table if not exists public.dial_archive (
@@ -163,5 +208,8 @@ $$;
 revoke all on function public.increment_metric(uuid, date, text, bigint) from public, anon, authenticated;
 grant execute on function public.increment_metric(uuid, date, text, bigint) to service_role;
 
-comment on column public.prospects.data is
-'Prospect JSON. Reused keys: name (Prospect), business (Company), state, city, phone (Phone Number, text), timezone, review_count (Total Reviews). Review keys: reviews_last_30_days, days_since_last_review, review_pct_30_days (percent points, 3.5 = 3.5%), recency_source. Missing review numbers are JSON null, not 0.';
+create or replace view public.prospects_view as
+select
+    p.*,
+    case when p.signal_date is null then null::integer else (current_date - p.signal_date)::integer end as days_since_signal
+from public.prospects p;

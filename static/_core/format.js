@@ -37,6 +37,13 @@ export function setDialerText(elementId, value) {
   const node = dialerEl(elementId);
   if (node) node.textContent = value;
 }
+
+export function prospectDisplayName(lead) {
+  return String(lead?.contact_name || "").trim()
+    || String(lead?.company || "").trim()
+    || String(lead?.phone || "").trim()
+    || "Prospect";
+}
 export const MARKETING_TOUCHES_FIELD = vocabulary.marketingTouchesField || "Marketing touches";
 export const STATUS_STYLES = Object.fromEntries(vocabulary.statuses.map((status) => [status.key, {
   label: status.label,
@@ -282,8 +289,7 @@ export function crmStatusOptionText(value, lead) {
 }
 
 export function agentUseStatusText(lead) {
-  const fields = lead?.fields || {};
-  const name = String(lead?.agent_reserved_name || fields.agent_reserved_name || "").trim();
+  const name = String(lead?.agent_reserved_name || "").trim();
   return name ? `Agent ${name} use` : (CRM_STATUS_LABELS[AGENT_USE_STATUS] || "Agent use");
 }
 

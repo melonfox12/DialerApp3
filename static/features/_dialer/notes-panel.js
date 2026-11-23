@@ -1,5 +1,5 @@
 import { state } from "../../_core/state.js";
-import { dialerEls, setDialerText } from "../../_core/format.js";
+import { dialerEls, prospectDisplayName, setDialerText } from "../../_core/format.js";
 import { formatPhoneNumber } from "../../_core/phone.js";
 import { leadNotes, notesLeadLabel, persistLeadNotes } from "../../_core/notes.js";
 
@@ -85,13 +85,9 @@ function extraFieldLines(lead) {
   const lines = [];
   if (lead.phone) lines.push(`Phone: ${formatPhoneNumber(lead.phone)}`);
   if (lead.timezone) lines.push(`Timezone: ${lead.timezone}`);
-  if (lead.business && lead.business !== lead.name) lines.push(`Business: ${lead.business}`);
-  for (const [name, value] of Object.entries(lead.fields || {})) {
-    if (/^notes?$/i.test(name.trim())) continue;
-    const text = String(value || "").trim();
-    if (!text) continue;
-    lines.push(`${name}: ${text}`);
-  }
+  if (lead.company && lead.company !== lead.contact_name) lines.push(`Company: ${lead.company}`);
+  if (lead.category) lines.push(`Category: ${lead.category}`);
+  if (lead.signal) lines.push(`Signal: ${lead.signal}`);
   return lines;
 }
 
@@ -126,12 +122,12 @@ function renderSendInfoProspectsList() {
       summary.className = "send-info-prospect-summary";
       const title = document.createElement("span");
       title.className = "send-info-prospect-title";
-      title.textContent = lead.business || lead.name || formatPhoneNumber(lead.phone) || "Prospect";
+      title.textContent = lead.company || prospectDisplayName(lead) || formatPhoneNumber(lead.phone) || "Prospect";
       summary.append(title);
-      if (lead.name && lead.business && lead.name !== lead.business) {
+      if (lead.contact_name && lead.company && lead.contact_name !== lead.company) {
         const subtitle = document.createElement("span");
         subtitle.className = "send-info-prospect-subtitle";
-        subtitle.textContent = lead.name;
+        subtitle.textContent = lead.contact_name;
         summary.append(subtitle);
       }
       const notesPreview = leadNotes(lead);

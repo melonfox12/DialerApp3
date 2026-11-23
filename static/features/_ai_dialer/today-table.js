@@ -126,9 +126,9 @@ export function renderTodayDialTable(agentId) {
     const row = document.createElement("tr");
   row.dataset.leadId = lead.id;
     const name = document.createElement("td");
-    name.textContent = lead.name || "—";
+    name.textContent = lead.contact_name || "—";
     const business = document.createElement("td");
-    business.textContent = lead.business || "—";
+    business.textContent = lead.company || "—";
     const status = document.createElement("td");
     status.className = "ai-today-status";
     status.textContent = statusLabel(lead, entry);

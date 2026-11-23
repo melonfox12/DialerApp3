@@ -4,6 +4,7 @@ import csv
 from datetime import datetime, timezone
 from io import StringIO
 
+from shared.prospect_schema import display_name
 from shared.vocabulary import canonical_status
 
 # Matches Total dials table columns, then prospect id/timezone, then raw call_log fields.
@@ -76,7 +77,7 @@ def _rows_for_leads(leads):
 
 
 def _row(lead, entry):
-    reviews = lead.get("review_count")
+    reviews = lead.get("lead_score")
     connected = entry.get("connected")
     if connected is True:
         connected_text = "true"
@@ -86,9 +87,9 @@ def _row(lead, entry):
         connected_text = ""
     return {
         "When": _dial_when(entry),
-        "Prospect": lead.get("name") or "",
+        "Prospect": lead.get("contact_name") or "",
         "Phone": lead.get("phone") or "",
-        "Business": lead.get("business") or "",
+        "Business": lead.get("company") or display_name(lead),
         "Reviews": reviews if reviews is not None and reviews != "" else "",
         "Call transcript": _transcript_csv_cell(lead.get("transcript")),
         "Status": canonical_status(lead.get("status", "new")),

@@ -10,7 +10,8 @@ from features._prospects.backend_supabase import SupabaseBackend
 from features._prospects.dial_archive import is_dial_archive_storage_lead
 from features._prospects.dial_records import is_dial_records_storage_lead
 from features._prospects.csv_export import csv_bytes_for
-from features._prospects.csv_import import apply_pitch_segment_from_fields, parse_csv, update_lead_fields
+from features._prospects.csv_import import parse_csv, update_lead_fields
+from shared.prospect_schema import active_leads, days_since_signal, display_name
 from shared.dial_policy import (
     apply_static_callback_status,
     apply_total_dials_callback_status,
@@ -36,7 +37,6 @@ from shared.vocabulary import (
     AGENT_RESERVED_NAME_FIELD,
     AGENT_USE_STATUS,
     CALL_OUTCOME_KEYS,
-    DEFAULT_BUSINESS_TYPE,
     MANUAL_CALLBACK_HOURS,
     NEVER_DIAL_STATUSES,
     NOV5_2026_STATIC_CALLBACK_DATE,
@@ -192,11 +192,10 @@ class ProspectStore:
             lead for lead in self.backend.snapshot()
             if not is_dial_archive_storage_lead(lead) and not is_dial_records_storage_lead(lead)
         ]
+        leads = active_leads(leads)
         for lead in leads:
             lead["status"] = canonical_status(lead.get("status"))
-            if not str(lead.get("business_type") or "").strip():
-                lead["business_type"] = DEFAULT_BUSINESS_TYPE
-            apply_pitch_segment_from_fields(lead)
+            lead["days_since_signal"] = days_since_signal(lead)
         return leads
 
     def repair_dial_statuses(self):
@@ -389,9 +388,6 @@ class ProspectStore:
                 raise ValueError(f"{agent_use_status_text(lead)} — already reserved.")
             lead[AGENT_RESERVED_NAME_FIELD] = str(agent_name or "").strip()
             lead[AGENT_RESERVED_ID_FIELD] = str(agent_id or "").strip()
-            fields = lead.setdefault("fields", {})
-            fields[AGENT_RESERVED_NAME_FIELD] = lead[AGENT_RESERVED_NAME_FIELD]
-            fields[AGENT_RESERVED_ID_FIELD] = lead[AGENT_RESERVED_ID_FIELD]
             previous = canonical_status(lead.get("status"))
             changed_at = utc_now().isoformat()
             if previous != AGENT_USE_STATUS:

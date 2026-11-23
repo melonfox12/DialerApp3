@@ -8,6 +8,7 @@ import urllib.parse
 from features import ai_agent_playbook, ai_agents, ai_voice_cartesia, ai_voice_disposition, ai_voice_llm
 from features._dialer import live_transcript, twilio, voice_session
 from shared.dial_policy import agent_reservation_blocks_other_apps
+from shared.prospect_schema import display_name
 from shared.vocabulary import TRANSCRIPT_SOURCE_CARTESIA, TRANSCRIPT_SOURCE_TWILIO
 
 _MAX_CALL_SECONDS = 900
@@ -38,8 +39,9 @@ def _lead_context(lead):
     lead = lead or {}
     return {
         "id": lead.get("id") or "",
-        "name": lead.get("name") or "",
-        "business": lead.get("business") or "",
+        "name": lead.get("contact_name") or "",
+        "business": lead.get("company") or "",
+        "display_name": display_name(lead),
         "phone": lead.get("phone") or "",
         "status": lead.get("status") or "",
     }

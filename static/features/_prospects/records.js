@@ -8,6 +8,7 @@ import {
   CRM_STATUS_LABELS,
   STATUS_LABELS,
   byId,
+  prospectDisplayName,
 } from "../../_core/format.js";
 import { showToast } from "../../_core/notify.js";
 import { render } from "../../core.js";
@@ -39,7 +40,7 @@ export async function changeLeadStatus(lead, status, select) {
     const label = next === "dialed"
       ? `callback in ${CALLBACK_STATUS_HOURS} hours`
       : (CRM_STATUS_LABELS[next] || STATUS_LABELS[next] || next).toLowerCase();
-    showToast(`${lead.name || lead.phone}: ${label}`);
+    showToast(`${prospectDisplayName(lead)}: ${label}`);
   } catch (error) {
     select.value = lead.status || "new";
     select.disabled = false;
@@ -49,7 +50,7 @@ export async function changeLeadStatus(lead, status, select) {
 }
 
 async function saveLeadField({ lead, field, value, previous, extra, input }) {
-  const payload = extra ? { fields: { [extra]: value } } : { [field]: value };
+  const payload = { [field]: value };
   input.disabled = true;
   byId("saveState").textContent = "Saving…";
   try {

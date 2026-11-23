@@ -139,12 +139,12 @@ class CallbackTimerTests(unittest.TestCase):
             crm = ProspectStore(Path(directory) / "crm")
             crm.leads = [{
                 "id": "a",
-                "name": "Ada",
+                "company": "Ada Co",
+                "contact_name": "Ada",
                 "phone": "+12025550101",
                 "status": "dialed",
                 "scheduled_until": due.isoformat(),
                 "call_log": [],
-                "fields": {},
             }]
             crm.save()
             crm = ProspectStore(Path(directory) / "crm")
@@ -153,7 +153,7 @@ class CallbackTimerTests(unittest.TestCase):
             remaining = calls._callback_due(lead) - utc_now()
             self.assertGreater(remaining, timedelta(minutes=30))
             self.assertLessEqual(remaining, timedelta(hours=2))
-            self.assertTrue(lead["fields"].get("callback_timer_48h_to_2h"))
+            self.assertTrue(lead.get("callback_timer_48h_to_2h"))
 
     def test_apply_total_dials_callback_status_unit(self):
         lead = _lead("x")

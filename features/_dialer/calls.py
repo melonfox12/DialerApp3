@@ -5,6 +5,7 @@ import threading
 from datetime import datetime, timedelta, timezone
 
 from features._dialer import rules, twilio, voice_session
+from shared.prospect_schema import display_name
 from shared.dial_policy import (
     CALLBACK_HOLD,
     CANCELLED,
@@ -104,7 +105,7 @@ def _create_call(state, call, destination):
             "AsyncAmdStatusCallback": twilio._url(state, call, "machine"),
             "AsyncAmdStatusCallbackMethod": "POST",
         })
-    lead_name = (call.get("lead") or {}).get("name") or "prospect"
+    lead_name = display_name(call.get("lead") or {})
     state.record_activity(f"Requesting Twilio call for {lead_name}", "api")
     try:
         result = twilio.twilio_request(state.settings["TWILIO_ACCOUNT_SID"], state.settings["TWILIO_AUTH_TOKEN"],
