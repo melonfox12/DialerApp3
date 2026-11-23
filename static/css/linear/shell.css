@@ -73,6 +73,31 @@
   font-size: 12px;
   font-weight: 450;
 }
+.side-primary-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.side-folder--locked {
+  margin-top: 4px;
+}
+.side-folder-lock {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  margin-left: auto;
+  color: #62666d;
+  opacity: 0.7;
+}
+.side-link--locked {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.side-link--locked:hover,
+.side-link--locked:focus-visible {
+  background: transparent;
+  color: #9b9da3;
+}
 .side-folder-head {
   color: #62666d;
   font-size: 12px;

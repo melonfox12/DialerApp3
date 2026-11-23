@@ -1,18 +1,27 @@
 import { byId, humanDialerPanel, setText } from "./format.js";
+import { showToast } from "./notify.js";
 import { renderCallerPool, renderTable } from "./registry.js";
 import { render } from "./render.js";
 import { S } from "./state.js";
 
 const DASHBOARD_TABS = ["dialer", "aiDialerAgent", "performance", "pipeline", "workflow", "prospects", "pool", "dials"];
+const PRIMARY_DASHBOARD_TABS = ["dialer", "prospects", "pipeline"];
+const LOCKED_DASHBOARD_TABS = ["aiDialerAgent", "performance", "workflow", "pool", "dials"];
 const TAB_ORDER_KEY = "prospect-desk-sidebar-order";
 const TAB_ACTIVE_KEY = "prospect-desk-dashboard-tab";
 const FOLDER_COLLAPSE_KEY = "prospect-desk-sidebar-folders-collapsed";
 const TAB_FOLDER_KEY = "prospect-desk-sidebar-tab-folders";
 const SIDEBAR_FOLDERS = {
-  "call-desk": ["dialer", "aiDialerAgent"],
-  "pipeline-ops": ["performance", "pipeline", "workflow"],
-  lists: ["prospects", "pool", "dials"],
+  misc: LOCKED_DASHBOARD_TABS,
 };
+
+function isLockedDashboardTab(name) {
+  return LOCKED_DASHBOARD_TABS.includes(name);
+}
+
+function navigableDashboardTabs() {
+  return sidebarTabs().filter((button) => !isLockedDashboardTab(button.dataset.dashboardTab));
+}
 const TAB_BUTTONS = {
   dialer: "dialerTabButton",
   aiDialerAgent: "aiDialerAgentTabButton",
@@ -89,13 +98,30 @@ function rememberTabFolders() {
   }
 }
 
+function tabListForButton(button) {
+  return button?.closest(".side-folder-items, .side-primary-tabs");
+}
+
 function applyTabOrder(order) {
   const normalized = normalizeTabOrder(order);
   const buttons = tabButtonsByName();
   const assignments = savedTabFolders();
+
+  const primaryItems = document.querySelector(".side-primary-tabs");
+  if (primaryItems) {
+    const primaryOrder = normalized.filter((name) => PRIMARY_DASHBOARD_TABS.includes(name));
+    for (const name of PRIMARY_DASHBOARD_TABS) {
+      if (!primaryOrder.includes(name)) primaryOrder.push(name);
+    }
+    for (const name of primaryOrder) {
+      if (buttons[name]) primaryItems.append(buttons[name]);
+    }
+  }
+
   const tabsByFolder = {};
   for (const name of DASHBOARD_TABS) {
-    const folderId = assignments[name];
+    if (PRIMARY_DASHBOARD_TABS.includes(name)) continue;
+    const folderId = assignments[name] || "misc";
     if (!tabsByFolder[folderId]) tabsByFolder[folderId] = [];
     tabsByFolder[folderId].push(name);
   }
@@ -131,6 +157,7 @@ function rememberTabOrder() {
 function savedDashboardTab() {
   try {
     const name = localStorage.getItem(TAB_ACTIVE_KEY) || "";
+    if (isLockedDashboardTab(name)) return "dialer";
     return DASHBOARD_TABS.includes(name) ? name : "dialer";
   } catch {
     return "dialer";
@@ -174,7 +201,8 @@ export function syncPerformanceDocumentHeight() {
 }
 
 function placeTab(button, target, before) {
-  const list = target.closest(".side-folder-items");
+  if (isLockedDashboardTab(button.dataset.dashboardTab) || isLockedDashboardTab(target.dataset.dashboardTab)) return;
+  const list = tabListForButton(target);
   if (!list) return;
   if (before) list.insertBefore(button, target);
   else list.insertBefore(button, target.nextSibling);
@@ -220,7 +248,10 @@ function applyFolderCollapse() {
   const saved = savedFolderCollapse();
   for (const folder of document.querySelectorAll(".side-folder")) {
     const folderId = folder.dataset.sideFolder;
-    setFolderCollapsed(folder, Boolean(saved[folderId]));
+    const collapsed = folderId === "misc"
+      ? saved[folderId] !== false
+      : Boolean(saved[folderId]);
+    setFolderCollapsed(folder, collapsed);
   }
 }
 
@@ -259,7 +290,7 @@ function bindTabReorder() {
   });
 
   for (const button of sidebarTabs()) {
-    button.draggable = true;
+    if (isLockedDashboardTab(button.dataset.dashboardTab)) continue;
     button.addEventListener("dragstart", (event) => {
       dragged = button;
       event.dataTransfer.effectAllowed = "move";
@@ -287,6 +318,10 @@ function bindTabReorder() {
 }
 
 export function setDashboardTab(name, moveFocus = false) {
+  if (isLockedDashboardTab(name)) {
+    showToast("This page is locked.");
+    name = "dialer";
+  }
   S.dashboardTab = DASHBOARD_TABS.includes(name) ? name : "dialer";
   rememberDashboardTab(S.dashboardTab);
   ensureFolderOpenForTab(S.dashboardTab);
@@ -347,9 +382,18 @@ export function bindNavigation() {
   bindSidebarFolders();
   bindTabReorder();
   for (const tabButton of sidebarTabs()) {
-    tabButton.title = "Drag to reorder";
-    tabButton.addEventListener("click", () => setDashboardTab(tabButton.dataset.dashboardTab));
+    const locked = isLockedDashboardTab(tabButton.dataset.dashboardTab);
+    tabButton.draggable = !locked;
+    tabButton.title = locked ? "Locked" : "Drag to reorder";
+    tabButton.addEventListener("click", () => {
+      if (locked) {
+        showToast("This page is locked.");
+        return;
+      }
+      setDashboardTab(tabButton.dataset.dashboardTab);
+    });
     tabButton.addEventListener("keydown", (event) => {
+      if (locked) return;
       if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
         event.preventDefault();
         const tabs = sidebarTabs();
@@ -361,7 +405,7 @@ export function bindNavigation() {
       }
       if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
       event.preventDefault();
-      const tabs = sidebarTabs().map((button) => button.dataset.dashboardTab);
+      const tabs = navigableDashboardTabs().map((button) => button.dataset.dashboardTab);
       const index = tabs.indexOf(tabButton.dataset.dashboardTab);
       const forward = event.key === "ArrowRight" || event.key === "ArrowDown";
       const next = event.key === "Home" ? 0
