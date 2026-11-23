@@ -1,0 +1,517 @@
+.dialer-run-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.dialer-run-panel.dialer-workspace {
+  --dialer-notes-width: 400px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--dialer-notes-width);
+  grid-template-rows: minmax(0, 1fr);
+}
+.dialer-run-panel.dialer-workspace.notes-collapsed {
+  --dialer-notes-width: 44px;
+}
+.prospect-notes-shell {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  overflow: hidden;
+  background: #16181c;
+  border-left: 1px solid #23252a;
+}
+.prospect-notes-expand-tab {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  padding: 12px 6px;
+  border: 0;
+  background: #16181c;
+  color: #d0d6e0;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 510;
+  letter-spacing: 0.04em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  cursor: pointer;
+}
+.prospect-notes-expand-tab:hover {
+  background: #1c1f24;
+  color: #ffffff;
+}
+.prospect-notes-resize-handle {
+  flex: 0 0 7px;
+  margin: 0 -3px 0 0;
+  cursor: col-resize;
+  touch-action: none;
+  background: linear-gradient(90deg, transparent, #2c3036 45%, #2c3036 55%, transparent);
+  z-index: 1;
+}
+.prospect-notes-resize-handle:hover,
+.prospect-notes-resize-handle.is-dragging,
+.prospect-notes-resize-handle:focus-visible {
+  background: linear-gradient(90deg, transparent, #5e6ad2 45%, #5e6ad2 55%, transparent);
+  outline: none;
+}
+.prospect-notes-inner {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dialer-run-panel.dialer-workspace.notes-collapsed .prospect-notes-inner {
+  display: none;
+}
+.dialer-run-panel.dialer-workspace.notes-collapsed .prospect-notes-resize-handle {
+  display: none;
+}
+.prospect-notes-shell-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px 0;
+}
+.prospect-notes-shell-label {
+  color: #8a8f98;
+  font-size: 11px;
+  font-weight: 510;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.prospect-notes-collapse {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #2c3036;
+  border-radius: 6px;
+  background: #0f1114;
+  color: #d0d6e0;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.prospect-notes-collapse:hover {
+  border-color: #5e6ad2;
+  color: #ffffff;
+}
+.dialer-run-panel.dialer-workspace[hidden] {
+  display: none;
+}
+.dialer-workspace-main {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.prospect-notes-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 14px 20px;
+  overflow: hidden;
+}
+.prospect-notes-active,
+.send-info-tracker {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+.send-info-tracker-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.send-info-tracker-head h3 {
+  margin: 0;
+  color: #d0d6e0;
+  font-size: 13px;
+  font-weight: 510;
+  letter-spacing: -0.01em;
+}
+.send-info-prospects-count {
+  color: #8a8f98;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.send-info-prospects-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+  scrollbar-color: #2c3036 transparent;
+  scrollbar-width: thin;
+}
+.send-info-prospects-empty {
+  margin: 0;
+  color: #8a8f98;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.send-info-prospect-item {
+  border: 1px solid #2c3036;
+  border-radius: 8px;
+  background: #0f1114;
+  overflow: hidden;
+}
+.send-info-prospect-item[open] {
+  border-color: #3d4460;
+}
+.send-info-prospect-summary {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+.send-info-prospect-summary::-webkit-details-marker {
+  display: none;
+}
+.send-info-prospect-title {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 510;
+  line-height: 1.35;
+}
+.send-info-prospect-subtitle {
+  color: #e8eaed;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.send-info-prospect-preview {
+  color: #f4f5f7;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.send-info-prospect-body {
+  padding: 0 10px 10px;
+  border-top: 1px solid #23252a;
+}
+.send-info-prospect-notes {
+  margin: 8px 0 0;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.send-info-prospect-meta {
+  margin: 6px 0 0;
+  color: #e8eaed;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.prospect-notes-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.prospect-notes-panel-head h3 {
+  margin: 0;
+  color: #d0d6e0;
+  font-size: 13px;
+  font-weight: 510;
+  letter-spacing: -0.01em;
+}
+.prospect-notes-save-state {
+  color: #8a8f98;
+  font-size: 11px;
+}
+.prospect-notes-target {
+  margin: 0;
+  color: #8a8f98;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.prospect-notes-editor {
+  flex: 1 1 auto;
+  min-height: 160px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #2c3036;
+  border-radius: 8px;
+  background: #0f1114;
+  color: #d0d6e0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.prospect-notes-editor:focus {
+  border-color: #5e6ad2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.25);
+}
+.prospect-notes-editor:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.dialer-document {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 32px 48px 48px;
+}
+.dialer-document .issue-meta,
+.dialer-document .queue-strip,
+.dialer-document .issue-lede,
+.dialer-document .session-momentum,
+.dialer-document .dialer-message,
+.dialer-document .dialer-controls,
+.dialer-document .outcome-row,
+.dialer-document .call-stage,
+.dialer-document .arcade-viewport,
+.dialer-document .advance-controls,
+.dialer-document .call-monitor-disclosure {
+  max-width: 760px;
+}
+
+.issue-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 0;
+  min-height: 24px;
+  color: #8a8f98;
+  font-size: 13px;
+}
+.issue-meta .live-indicator {
+  gap: 8px;
+  color: #8a8f98;
+  font-size: 13px;
+  font-weight: 450;
+  letter-spacing: 0;
+}
+.issue-meta .live-indicator i {
+  width: 8px;
+  height: 8px;
+  box-shadow: 0 0 0 3px rgba(138, 143, 152, .16);
+}
+.issue-meta .line-count,
+.issue-meta .caller-id-line {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: #8a8f98;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+}
+.issue-meta .line-count::before,
+.issue-meta .caller-id-line::before {
+  margin: 0 10px;
+  color: #3e4248;
+  content: "·";
+}
+.issue-meta .dialer-pool-filter {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 0 auto;
+}
+.issue-meta .dialer-pool-filter .dialer-pool-status-select,
+.issue-meta .dialer-pool-filter .dialer-business-type-select,
+.issue-meta .dialer-pool-filter .dialer-caller-id-select {
+  position: static;
+  width: auto;
+  min-width: 108px;
+  height: 28px;
+  margin: 0;
+  padding: 0 8px;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.issue-meta .dialer-pool-filter .dialer-pool-status-select:hover,
+.issue-meta .dialer-pool-filter .dialer-business-type-select:hover,
+.issue-meta .dialer-pool-filter .dialer-caller-id-select:hover {
+  background: rgba(255, 255, 255, .04);
+  color: var(--ink);
+}
+/* Only the native timezone select is hidden; the menu button drives that filter. */
+.issue-meta .dialer-pool-filter #dialerTimezoneFilter {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.issue-meta .timezone-menu { position: relative; }
+.issue-meta .timezone-menu-button {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  min-width: 148px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.issue-meta .timezone-menu-button::after {
+  content: "";
+  width: 0;
+  height: 0;
+  margin-left: 10px;
+  border-right: 3.5px solid transparent;
+  border-left: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+}
+.issue-meta .timezone-menu-button:hover {
+  background: rgba(255, 255, 255, .04);
+  color: var(--ink);
+}
+.issue-meta .timezone-menu-list {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 100%;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border-radius: var(--radius-md);
+}
+.issue-meta .timezone-menu-option {
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.issue-meta .timezone-menu-option + .timezone-menu-option { margin-top: 4px; }
+
+.dialer-document .queue-strip {
+  display: block;
+  min-height: 0;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.dialer-document .queue-strip .active-copy strong {
+  color: #f7f8f8;
+  font-size: 24px;
+  font-weight: 590;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  overflow: visible;
+  white-space: normal;
+}
+.dialer-document .queue-strip .queue-place,
+.dialer-document .queue-strip .queue-reviews {
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 510;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.dialer-document .power-lines {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.dialer-document .power-line {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+}
+.dialer-document .power-line strong {
+  display: block;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 590;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dialer-document .power-line .queue-place,
+.dialer-document .power-line .queue-reviews,
+.dialer-document .power-line .power-line-state,
+.dialer-document .power-line-empty {
+  display: block;
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 510;
+}
+.dialer-document .power-line .queue-place { color: var(--success); }
+.dialer-document .power-line .queue-reviews { color: var(--amber); }
+.dialer-document .power-line .power-line-state,
+.dialer-document .power-line-empty { color: var(--muted); }
+.dialer-document .power-line[data-tone="live"] { border-color: var(--success); }
+.dialer-document .power-line[data-tone="live"] .power-line-state { color: var(--success); }
+.dialer-document .queue-strip .queue-place { color: var(--success); }
+.dialer-document .queue-strip .queue-reviews { color: var(--amber); }
+.issue-lede {
+  max-width: 560px;
+  margin: 8px 0 0;
+  color: #8a8f98;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.011em;
+  line-height: 1.5;
+}
+.dialer-run-panel:not(:has(.dialer-controls[data-controls="idle"])) .issue-lede { display: none; }
+
+.dialer-document .session-momentum {
+  max-width: 420px;
+  margin: 22px 0 0;
+  gap: 8px;
+}
+.dialer-document .session-goal > div:first-child { margin-bottom: 8px; gap: 8px; }
+.dialer-document .session-goal > div:first-child > span:first-child {
+  color: #8a8f98;
+  font-size: 13px;
+  font-weight: 400;
+}
+.dialer-document .session-goal strong {
+  color: #d0d6e0;
+  font-size: 13px;
+  font-weight: 510;
+}
+.dialer-document .goal-track { height: 4px; background: #2c3036; }
+.dialer-document .goal-track span { background: #5e6ad2; }
+.dialer-document .session-streak,
+.dialer-document .session-halfway { font-size: 13px; }
+.dialer-document .break-nudge { border-top-color: #23252a; }

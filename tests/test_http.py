@@ -1,0 +1,544 @@
+import json
+import re
+import tempfile
+import unittest
+from datetime import timedelta
+from pathlib import Path
+
+from shared.api_contract import (
+    DIALER_SETTINGS_KEYS,
+    DIALER_STATE_KEYS,
+    LEADS_CATALOG_KEYS,
+    LIVE_STATE_KEYS,
+    METRICS_DAILY_ROW_KEYS,
+    PERFORMANCE_DAILY_KEYS,
+    PERFORMANCE_PAYLOAD_KEYS,
+    PERFORMANCE_TREND_KEYS,
+    SETTINGS_VIEW_KEYS,
+)
+from shared.infra import utc_now
+from tests.local_server import LocalServers
+
+ROOT = Path(__file__).resolve().parent.parent
+
+STATE_KEYS = DIALER_STATE_KEYS
+LIVE_KEYS = LIVE_STATE_KEYS
+SETTINGS_KEYS = SETTINGS_VIEW_KEYS
+DAILY_METRIC_KEYS = METRICS_DAILY_ROW_KEYS
+
+
+class HttpContractTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.servers = LocalServers(self._tmp.name).start()
+        self.assertEqual(self.servers.runtime.storage_name, "local JSON files")
+
+    def tearDown(self):
+        self.servers.stop()
+        self._tmp.cleanup()
+
+    def request(self, method, path, body=None, headers=None):
+        return self.servers.request(self.servers.app_base, method, path, body, headers)
+
+    def json_request(self, method, path, payload=None):
+        body = None if payload is None else json.dumps(payload)
+        headers = {"Content-Type": "application/json"} if body is not None else None
+        status, raw, content_type = self.request(method, path, body, headers)
+        data = json.loads(raw.decode("utf-8")) if raw else None
+        return status, data, content_type
+
+    def assert_keys(self, payload, keys):
+        self.assertEqual(tuple(sorted(payload)), tuple(sorted(keys)))
+
+    def test_endpoint_status_and_top_level_keys(self):
+        status, page, content_type = self.request("GET", "/")
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", content_type)
+        snapshot = ROOT / "docs" / "page-before.html"
+        self.assertTrue(snapshot.exists(), f"Missing page snapshot {snapshot}")
+        def comparable(body):
+            text = body.replace(b"\r\n", b"\n").decode("utf-8")
+            text = text.replace(
+                '<button id="enterLiveButton" class="button button-secondary monitor-enter-live" type="button" hidden>Enter live line</button>',
+                "",
+            )
+            text = re.sub(
+                r'<script type="application/json" id="vocabulary">.*?</script>',
+                "",
+                text,
+                count=1,
+                flags=re.S,
+            )
+            text = re.sub(
+                r'(<script type="module" src=")[^"]+(")',
+                r"\1main.js\2",
+                text,
+                count=1,
+            )
+            dialogs = re.findall(r"<dialog\b.*?</dialog>", text, flags=re.S)
+            text = re.sub(r"<dialog\b.*?</dialog>", "", text, flags=re.S)
+            kept = [line.rstrip() for line in text.split("\n") if line.strip()]
+            dialog_lines = []
+            for dialog in sorted(dialogs):
+                dialog_lines.extend(line.rstrip() for line in dialog.split("\n"))
+            return "\n".join(kept + dialog_lines)
+        self.assertEqual(comparable(page), comparable(snapshot.read_bytes()))
+
+        status, raw, content_type = self.request("GET", "/css/01-tokens.css")
+        self.assertEqual(status, 200)
+        self.assertIn("text/css", content_type)
+        status, raw, content_type = self.request("GET", "/main.js")
+        self.assertEqual(status, 200)
+        self.assertIn("javascript", content_type)
+
+        status, payload, _type = self.json_request("GET", "/api/auth/config")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {"google": False, "url": "", "anonKey": ""})
+
+        status, payload, _type = self.json_request("GET", "/api/health")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {"ok": True, "storage": "local JSON files"})
+
+        status, payload, _type = self.json_request("GET", "/api/auth/me")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {"id": "", "email": ""})
+
+        status, payload, _type = self.json_request("GET", "/api/state")
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, STATE_KEYS)
+        self.assertNotIn("leads", payload)
+
+        status, payload, _type = self.json_request("GET", "/api/leads")
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, LEADS_CATALOG_KEYS)
+
+        status, payload, _type = self.json_request("GET", "/api/live")
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, LIVE_KEYS)
+
+        status, payload, _type = self.json_request("GET", "/api/metrics")
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, ("all_time", "daily", "today"))
+        self.assertEqual(payload["today"], {})
+        self.assertEqual(payload["all_time"], {})
+        self.assertEqual(len(payload["daily"]), 7)
+        for day in payload["daily"]:
+            self.assert_keys(day, DAILY_METRIC_KEYS)
+
+        status, payload, _type = self.json_request("GET", "/api/performance?range=week&tz=America/New_York")
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, PERFORMANCE_PAYLOAD_KEYS)
+        self.assert_keys(payload["daily"], PERFORMANCE_DAILY_KEYS)
+        self.assert_keys(payload["funnel"], (
+            "dials_to_connected",
+            "connected_to_conversations",
+            "conversations_to_booked",
+            "connected_to_booked",
+        ))
+        self.assert_keys(payload["trend"], PERFORMANCE_TREND_KEYS)
+        self.assertIsInstance(payload["trend"]["buckets"], list)
+
+        status, payload, _type = self.json_request("GET", "/api/settings")
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, SETTINGS_KEYS)
+
+        status, payload, _type = self.json_request("GET", "/api/voice-token")
+        self.assertEqual(status, 400)
+        self.assert_keys(payload, ("error",))
+
+        status, raw, content_type = self.request("GET", "/api/export.csv")
+        self.assertEqual(status, 200)
+        self.assertIn("text/csv", content_type)
+        self.assertTrue(raw.startswith(b"\xef\xbb\xbf"))
+
+        status, raw, content_type = self.request("GET", "/api/dials/export.csv")
+        self.assertEqual(status, 200)
+        self.assertIn("text/csv", content_type)
+        self.assertTrue(raw.startswith(b"\xef\xbb\xbf"))
+        self.assertIn(b"When,Prospect,Phone", raw)
+
+        status, raw, _type = self.request(
+            "POST",
+            "/api/debug",
+            json.dumps({"level": "client", "message": "clicked start"}),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(status, 204)
+        self.assertEqual(raw, b"")
+
+        status, raw, _type = self.request("POST", "/api/debug", b"{}", {"Content-Type": "application/json"})
+        self.assertEqual(status, 400)
+        self.assertEqual(raw, b"")
+
+        status, payload, _type = self.json_request("POST", "/api/leads", {
+            "name": "Ada",
+            "business": "Shop",
+            "phone": "2025550111",
+            "timezone": "Eastern",
+        })
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, ("lead", "state"))
+        self.assert_keys(payload["state"], STATE_KEYS)
+        lead_id = payload["lead"]["id"]
+
+        status, payload, _type = self.json_request("POST", "/api/next/skip", {"id": lead_id})
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, STATE_KEYS)
+        self.assertNotIn("leads", payload)
+        self.assertIsNone(payload["next_lead"])
+        _, catalog, _type = self.json_request("GET", "/api/leads")
+        skipped = next(lead for lead in catalog["leads"] if lead["id"] == lead_id)
+        self.assertEqual(skipped["status"], "dialed")
+        self.assertEqual(skipped["call_log"][0]["answered_by"], "skipped")
+
+        status, payload, _type = self.json_request("POST", "/api/next/skip", {})
+        self.assertEqual(status, 400)
+
+        csv_body = b"Name,Phone,Timezone\nBea,2025550112,Central\n"
+        status, raw, content_type = self.request(
+            "POST", "/api/import", csv_body, {"Content-Type": "text/csv"},
+        )
+        payload = json.loads(raw.decode("utf-8"))
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, ("import", "state"))
+        self.assert_keys(payload["import"], ("added", "columns", "duplicates", "skipped", "total"))
+        self.assert_keys(payload["state"], STATE_KEYS)
+
+        status, payload, _type = self.json_request("POST", "/api/settings", {
+            "session_goal": "20",
+            "calling_start_hour": "8",
+            "calling_end_hour": "21",
+        })
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, SETTINGS_KEYS)
+
+        status, payload, _type = self.json_request("POST", "/api/timezone", {"timezone": "Eastern"})
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, STATE_KEYS)
+        self.assertEqual(payload["selected_timezone"], "Eastern")
+        self.assertEqual(payload["caller_id_group"], "eastern")
+        self.assertEqual(
+            payload["caller_ids"],
+            ["+18607354163", "+18607521887", "+18607824999"],
+        )
+
+        status, payload, _type = self.json_request("POST", "/api/timezone", {"timezone": "Pacific"})
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["selected_timezone"], "Pacific")
+        self.assertEqual(payload["caller_id_group"], "eastern")
+        self.assertEqual(
+            payload["caller_ids"],
+            ["+18607354163", "+18607521887", "+18607824999"],
+        )
+
+        status, payload, _type = self.json_request("POST", "/api/caller-id-group", {"caller_id_group": "pacific"})
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, STATE_KEYS)
+        self.assertEqual(payload["selected_timezone"], "Pacific")
+        self.assertEqual(payload["caller_id_group"], "pacific")
+        self.assertEqual(
+            payload["caller_ids"],
+            ["+12136953093", "+12139533359", "+12137204625"],
+        )
+
+        status, payload, _type = self.json_request("POST", "/api/timezone", {"timezone": "Central"})
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["selected_timezone"], "Central")
+        self.assertEqual(payload["caller_id_group"], "pacific")
+        self.assertEqual(
+            payload["caller_ids"],
+            ["+12136953093", "+12139533359", "+12137204625"],
+        )
+
+        status, payload, _type = self.json_request("POST", "/api/caller-id-group", {"caller_id_group": "central"})
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["caller_id_group"], "central")
+        self.assertEqual(
+            payload["caller_ids"],
+            ["+19206545904", "+19207827371", "+19205668506"],
+        )
+
+        status, payload, _type = self.json_request("POST", "/api/caller-id-group", {"caller_id_group": "bogus"})
+        self.assertEqual(status, 400)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("POST", "/api/start", {})
+        self.assertEqual(status, 400)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("POST", "/api/pause", {})
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, STATE_KEYS)
+
+        status, payload, _type = self.json_request("POST", "/api/stop", {})
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, STATE_KEYS)
+
+        status, payload, _type = self.json_request("POST", "/api/hangup", {})
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, STATE_KEYS)
+
+        status, payload, _type = self.json_request("POST", "/api/skip", {})
+        self.assertEqual(status, 400)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("POST", "/api/enter-live", {})
+        self.assertEqual(status, 404)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("POST", "/api/advance", {})
+        self.assertEqual(status, 400)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("POST", f"/api/leads/{lead_id}/dial", {})
+        self.assertEqual(status, 400)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("POST", f"/api/leads/{lead_id}/status", {"status": "contact_engaged"})
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, ("lead", "state"))
+        self.assert_keys(payload["state"], STATE_KEYS)
+
+        status, payload, _type = self.json_request("GET", "/api/missing")
+        self.assertEqual(status, 404)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("POST", "/api/missing", {})
+        self.assertEqual(status, 404)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("DELETE", "/api/missing")
+        self.assertEqual(status, 404)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("DELETE", "/api/leads/missing-lead")
+        self.assertEqual(status, 404)
+        self.assert_keys(payload, ("error",))
+
+        status, payload, _type = self.json_request("DELETE", f"/api/leads/{lead_id}")
+        self.assertEqual(status, 200)
+        self.assert_keys(payload, STATE_KEYS)
+
+    def test_ai_agent_sandbox_routes_read_json_body(self):
+        status, payload, _type = self.json_request("POST", "/api/ai-agents/sandbox/reset", {"agent_id": "ava"})
+        self.assertEqual(status, 200)
+        self.assertFalse(payload["active"])
+        self.assertEqual(payload["agent_id"], "ava")
+
+    def test_settings_keep_the_api_key_and_hide_the_auth_token(self):
+        credentials = {
+            "account_sid": "ACstored",
+            "auth_token": "stored-auth-token",
+            "api_key": "SKstored",
+            "api_secret": "stored-api-secret",
+            "twiml_app_sid": "APstored",
+            "public_base_url": "https://example.ngrok.dev",
+        }
+        status, raw, _type = self.request(
+            "POST", "/api/settings", json.dumps(credentials), {"Content-Type": "application/json"},
+        )
+        self.assertEqual(status, 200)
+        self.assertNotIn(b"stored-auth-token", raw)
+        saved = json.loads(raw.decode("utf-8"))
+        self.assertEqual(saved["api_key"], "SKstored")
+        self.assertEqual(saved["api_secret"], "stored-api-secret")
+
+        status, raw, _type = self.request("GET", "/api/settings")
+        self.assertEqual(status, 200)
+        self.assertNotIn(b"stored-auth-token", raw)
+        payload = json.loads(raw.decode("utf-8"))
+        self.assert_keys(payload, SETTINGS_KEYS)
+        self.assertEqual(payload["auth_token"], "")
+        self.assertEqual(payload["api_key"], "SKstored")
+        self.assertEqual(payload["api_secret"], "stored-api-secret")
+        self.assertTrue(payload["has_auth_token"])
+        self.assertTrue(payload["has_api_secret"])
+
+    def test_blank_secret_post_keeps_the_stored_secret(self):
+        from shared.config import read_env
+
+        base = {
+            "account_sid": "ACstored",
+            "api_key": "SKstored",
+            "twiml_app_sid": "APstored",
+            "public_base_url": "https://example.ngrok.dev",
+        }
+        self.json_request("POST", "/api/settings", {**base, "auth_token": "keep-me", "api_secret": "keep-too"})
+        status, payload, _type = self.json_request("POST", "/api/settings", {**base, "auth_token": "", "api_secret": ""})
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["has_auth_token"])
+        stored = read_env(str(Path(self._tmp.name) / ".env"))
+        self.assertEqual(stored["TWILIO_AUTH_TOKEN"], "keep-me")
+        self.assertEqual(stored["TWILIO_API_SECRET"], "keep-too")
+
+    def test_cross_site_text_plain_post_is_rejected(self):
+        body = json.dumps({"account_sid": "ACevil", "public_base_url": "https://evil.example"})
+        status, _raw, _type = self.request("POST", "/api/settings", body, {"Content-Type": "text/plain"})
+        self.assertEqual(status, 415)
+        status, payload, _type = self.json_request("GET", "/api/settings")
+        self.assertEqual(payload["account_sid"], "")
+        self.assertEqual(payload["public_base_url"], "")
+
+    def test_foreign_origin_is_rejected(self):
+        for method, path in (("POST", "/api/settings"), ("POST", "/api/debug"), ("DELETE", "/api/leads/x")):
+            status, _raw, _type = self.request(method, path, b"{}", {
+                "Content-Type": "application/json",
+                "Origin": "https://evil.example",
+            })
+            self.assertEqual(status, 403, path)
+
+    def test_foreign_host_is_rejected(self):
+        port = self.servers.app_base.rsplit(":", 1)[1]
+        for method, path in (("GET", "/api/settings"), ("GET", "/"), ("POST", "/api/debug")):
+            status, _raw, _type = self.request(method, path, b"{}" if method == "POST" else None, {
+                "Content-Type": "application/json",
+                "Host": f"rebind.example:{port}",
+            })
+            self.assertEqual(status, 403, path)
+
+    def test_same_origin_json_post_and_csv_import_pass(self):
+        port = self.servers.app_base.rsplit(":", 1)[1]
+        for origin in (f"http://127.0.0.1:{port}", f"http://localhost:{port}"):
+            status, _raw, _type = self.request("POST", "/api/timezone", json.dumps({"timezone": "Eastern"}), {
+                "Content-Type": "application/json",
+                "Origin": origin,
+            })
+            self.assertEqual(status, 200, origin)
+        status, raw, _type = self.request(
+            "POST", "/api/import", b"Name,Phone\nCy,2025550113\n", {
+                "Content-Type": "application/octet-stream",
+                "Origin": f"http://127.0.0.1:{port}",
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(raw.decode("utf-8"))["import"]["added"], 1)
+
+    def test_get_reads_do_not_repair_crm(self):
+        due = (utc_now() + timedelta(hours=2)).replace(microsecond=0).isoformat()
+        status, created, _type = self.json_request("POST", "/api/leads", {
+            "name": "Callback",
+            "business": "Shop",
+            "phone": "2025550199",
+            "timezone": "Eastern",
+        })
+        self.assertEqual(status, 200)
+        lead_id = created["lead"]["id"]
+        dialer = self.servers.runtime.local.dialer
+        dialer.crm.set_status(lead_id, "dialed", due)
+        logs_before = len(next(lead for lead in dialer.crm.snapshot() if lead["id"] == lead_id).get("call_log") or [])
+        revision_before = dialer.crm.revision
+
+        for _ in range(3):
+            status, _payload, _type = self.json_request("GET", "/api/live")
+            self.assertEqual(status, 200)
+        status, _payload, _type = self.json_request("GET", "/api/state")
+        self.assertEqual(status, 200)
+        status, catalog, _type = self.json_request("GET", "/api/leads")
+        self.assertEqual(status, 200)
+        lead = next(item for item in catalog["leads"] if item["id"] == lead_id)
+        self.assertEqual(len(lead.get("call_log") or []), logs_before)
+        self.assertEqual(dialer.crm.revision, revision_before)
+
+        status, _scan, _type = self.json_request("POST", "/api/dials/scan", {})
+        self.assertEqual(status, 200)
+        lead_after = next(item for item in dialer.crm.snapshot() if item["id"] == lead_id)
+        self.assertGreater(len(lead_after.get("call_log") or []), logs_before)
+
+
+class DebugRedactionTests(unittest.TestCase):
+    def test_secrets_are_fully_redacted(self):
+        from shared._infra.files import _redact
+
+        for text, secret in (
+            ("TWILIO_AUTH_TOKEN=abc", "abc"),
+            ("TWILIO_API_SECRET=zz", "zz"),
+            ("auth_token: abc", "abc"),
+            ("Authorization: Bearer eyJabc", "eyJabc"),
+            ("sb_secret_xxx", "sb_secret_xxx"),
+            ("SUPABASE_SECRET_KEY=sb_secret_live123", "live123"),
+            ("headers {'Authorization': 'Bearer eyJtoken'}", "eyJtoken"),
+        ):
+            redacted = _redact(f"before {text} after")
+            self.assertNotIn(secret, redacted, text)
+            self.assertIn("[redacted]", redacted, text)
+            self.assertTrue(redacted.startswith("before "), redacted)
+
+    def test_plain_text_is_untouched(self):
+        from shared._infra.files import _redact
+
+        self.assertEqual(_redact("POST /api/settings 200 12ms"), "POST /api/settings 200 12ms")
+
+
+EXPECTED_ROUTES = {
+    ("GET", "/api/auth/config"),
+    ("GET", "/api/health"),
+    ("GET", "/api/auth/me"),
+    ("POST", "/api/debug"),
+    ("GET", "/api/settings"),
+    ("POST", "/api/settings"),
+    ("GET", "/api/metrics"),
+    ("POST", "/api/leads"),
+    ("POST", "/api/leads/{id}/fields"),
+    ("POST", "/api/leads/{id}/pipeline"),
+    ("POST", "/api/import"),
+    ("POST", "/api/pipeline/settings"),
+    ("GET", "/api/export.csv"),
+    ("DELETE", "/api/leads/{id}"),
+    ("GET", "/api/state"),
+    ("GET", "/api/leads"),
+    ("GET", "/api/live"),
+    ("GET", "/api/voice-token"),
+    ("POST", "/api/timezone"),
+    ("POST", "/api/caller-id-group"),
+    ("POST", "/api/start"),
+    ("POST", "/api/pause"),
+    ("POST", "/api/stop"),
+    ("POST", "/api/hangup"),
+    ("POST", "/api/skip"),
+    ("POST", "/api/next/skip"),
+    ("POST", "/api/advance"),
+    ("POST", "/api/dials/scan"),
+    ("GET", "/api/dials/export.csv"),
+    ("POST", "/api/dials/import"),
+    ("POST", "/api/dials/backfill-new-callbacks"),
+    ("POST", "/api/dials/backfill-nov5-static-callbacks"),
+    ("POST", "/api/dials/records/snapshot"),
+    ("GET", "/api/dials/records/{id}"),
+    ("POST", "/api/leads/{id}/dial"),
+    ("POST", "/api/leads/{id}/status"),
+    ("POST", "/api/leads/{id}/call-outcome"),
+    ("POST", "/api/voice/rejoin"),
+    ("GET", "/api/performance"),
+    ("POST", "/api/performance/goal"),
+    ("POST", "/api/bookings"),
+    ("GET", "/api/ai-agents"),
+    ("POST", "/api/ai-agents/create"),
+    ("POST", "/api/ai-agents/duplicate"),
+    ("POST", "/api/ai-agents/delete"),
+    ("POST", "/api/ai-agents/boot"),
+    ("GET", "/api/ai-agents/playbook"),
+    ("POST", "/api/ai-agents/playbook"),
+    ("POST", "/api/ai-agents/release-pool"),
+    ("POST", "/api/ai-agents/start"),
+    ("POST", "/api/ai-agents/stop"),
+    ("POST", "/api/ai-agents/sandbox/reset"),
+    ("POST", "/api/ai-agents/sandbox/start"),
+    ("POST", "/api/ai-agents/sandbox/turn"),
+    ("GET", "/api/ai-agents/sandbox/sync"),
+    ("POST", "/api/ai-agents/sandbox/audio"),
+    ("POST", "/api/ai-agents/sandbox/playback-ready"),
+    ("GET", "/api/ai-voice/bootstrap"),
+    ("POST", "/api/ai-voice/inbound"),
+    ("POST", "/api/ai-voice/stream-started"),
+    ("POST", "/api/ai-voice/stream-stopped"),
+    ("GET", "/api/ai-voice/stream-sync"),
+}
+
+
+class RouteTableTests(unittest.TestCase):
+    def test_each_endpoint_is_registered_once(self):
+        from web import all_routes
+
+        found = [(method, path) for method, path, _handler, _profile in all_routes()]
+        self.assertEqual(len(found), len(set(found)))
+        self.assertEqual(set(found), EXPECTED_ROUTES)

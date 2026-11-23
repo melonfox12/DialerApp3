@@ -1,0 +1,381 @@
+import { byId, humanDialerPanel, setText } from "./format.js";
+import { renderCallerPool, renderTable } from "./registry.js";
+import { render } from "./render.js";
+import { S } from "./state.js";
+
+const DASHBOARD_TABS = ["dialer", "aiDialerAgent", "performance", "pipeline", "workflow", "prospects", "pool", "dials"];
+const TAB_ORDER_KEY = "prospect-desk-sidebar-order";
+const TAB_ACTIVE_KEY = "prospect-desk-dashboard-tab";
+const FOLDER_COLLAPSE_KEY = "prospect-desk-sidebar-folders-collapsed";
+const TAB_FOLDER_KEY = "prospect-desk-sidebar-tab-folders";
+const SIDEBAR_FOLDERS = {
+  "call-desk": ["dialer", "aiDialerAgent"],
+  "pipeline-ops": ["performance", "pipeline", "workflow"],
+  lists: ["prospects", "pool", "dials"],
+};
+const TAB_BUTTONS = {
+  dialer: "dialerTabButton",
+  aiDialerAgent: "aiDialerAgentTabButton",
+  performance: "performanceTabButton",
+  pipeline: "pipelineTabButton",
+  workflow: "workflowTabButton",
+  prospects: "prospectsTabButton",
+  pool: "poolTabButton",
+  dials: "dialsTabButton",
+};
+const TAB_TITLES = {
+  dialer: "Dialer",
+  aiDialerAgent: "AI Dialer Agent",
+  performance: "Performance",
+  pipeline: "Pipeline",
+  workflow: "Workflow",
+  prospects: "Prospects",
+  pool: "Caller pool",
+  dials: "Total dials",
+};
+
+export function normalizeTabOrder(order) {
+  const next = [];
+  for (const name of order || []) {
+    if (DASHBOARD_TABS.includes(name) && !next.includes(name)) next.push(name);
+  }
+  for (const name of DASHBOARD_TABS) {
+    if (!next.includes(name)) next.push(name);
+  }
+  return next;
+}
+
+function sidebarTabs() {
+  return [...document.querySelectorAll(".side-links [data-dashboard-tab]")];
+}
+
+function tabButtonsByName() {
+  return Object.fromEntries(sidebarTabs().map((button) => [button.dataset.dashboardTab, button]));
+}
+
+function defaultTabFolders() {
+  const map = {};
+  for (const [folderId, tabNames] of Object.entries(SIDEBAR_FOLDERS)) {
+    for (const name of tabNames) map[name] = folderId;
+  }
+  return map;
+}
+
+function savedTabFolders() {
+  const defaults = defaultTabFolders();
+  try {
+    const saved = JSON.parse(localStorage.getItem(TAB_FOLDER_KEY) || "{}");
+    const map = { ...defaults };
+    for (const name of DASHBOARD_TABS) {
+      const folderId = saved[name];
+      if (folderId && document.querySelector(`.side-folder[data-side-folder="${folderId}"]`)) map[name] = folderId;
+    }
+    return map;
+  } catch {
+    return defaults;
+  }
+}
+
+function rememberTabFolders() {
+  const map = {};
+  for (const button of sidebarTabs()) {
+    const folderId = button.closest(".side-folder")?.dataset.sideFolder;
+    if (folderId) map[button.dataset.dashboardTab] = folderId;
+  }
+  try {
+    localStorage.setItem(TAB_FOLDER_KEY, JSON.stringify(map));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function applyTabOrder(order) {
+  const normalized = normalizeTabOrder(order);
+  const buttons = tabButtonsByName();
+  const assignments = savedTabFolders();
+  const tabsByFolder = {};
+  for (const name of DASHBOARD_TABS) {
+    const folderId = assignments[name];
+    if (!tabsByFolder[folderId]) tabsByFolder[folderId] = [];
+    tabsByFolder[folderId].push(name);
+  }
+  for (const [folderId, tabNames] of Object.entries(tabsByFolder)) {
+    const items = document.querySelector(`.side-folder[data-side-folder="${folderId}"] .side-folder-items`);
+    if (!items) continue;
+    for (const name of tabNames) {
+      if (buttons[name]) items.append(buttons[name]);
+    }
+    const ordered = normalized.filter((name) => tabNames.includes(name));
+    for (const name of tabNames) {
+      if (!ordered.includes(name)) ordered.push(name);
+    }
+    for (const name of ordered) {
+      if (buttons[name]) items.append(buttons[name]);
+    }
+  }
+}
+
+function savedTabOrder() {
+  try {
+    return normalizeTabOrder(JSON.parse(localStorage.getItem(TAB_ORDER_KEY) || "[]"));
+  } catch {
+    return [...DASHBOARD_TABS];
+  }
+}
+
+function rememberTabOrder() {
+  localStorage.setItem(TAB_ORDER_KEY, JSON.stringify(sidebarTabs().map((button) => button.dataset.dashboardTab)));
+  rememberTabFolders();
+}
+
+function savedDashboardTab() {
+  try {
+    const name = localStorage.getItem(TAB_ACTIVE_KEY) || "";
+    return DASHBOARD_TABS.includes(name) ? name : "dialer";
+  } catch {
+    return "dialer";
+  }
+}
+
+function rememberDashboardTab(name) {
+  try {
+    localStorage.setItem(TAB_ACTIVE_KEY, name);
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+/** Match Performance column height to Dialer: document top → Recent activity row (+ doc bottom padding). */
+export function syncPerformanceDocumentHeight() {
+  const perf = document.querySelector(".performance-document");
+  const panel = humanDialerPanel();
+  const doc = panel?.querySelector(".dialer-document");
+  const recent = doc?.querySelector(".activity-log-disclosure summary");
+  if (!perf || !doc || !recent) return;
+
+  const measure = () => {
+    const docRect = doc.getBoundingClientRect();
+    const recentRect = recent.getBoundingClientRect();
+    if (!recentRect.height) return null;
+    const padBottom = Number.parseFloat(getComputedStyle(doc).paddingBottom) || 0;
+    return Math.round(recentRect.bottom - docRect.top + padBottom);
+  };
+
+  let height = measure();
+  if (height == null && panel.hidden) {
+    const restore = panel.hidden;
+    panel.hidden = false;
+    height = measure();
+    panel.hidden = restore;
+  }
+  if (height != null && height > 0) {
+    document.documentElement.style.setProperty("--performance-run-height", `${height}px`);
+  }
+}
+
+function placeTab(button, target, before) {
+  const list = target.closest(".side-folder-items");
+  if (!list) return;
+  if (before) list.insertBefore(button, target);
+  else list.insertBefore(button, target.nextSibling);
+  rememberTabOrder();
+}
+
+function savedFolderCollapse() {
+  try {
+    return JSON.parse(localStorage.getItem(FOLDER_COLLAPSE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function rememberFolderCollapse(state) {
+  try {
+    localStorage.setItem(FOLDER_COLLAPSE_KEY, JSON.stringify(state));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function setFolderCollapsed(folderEl, collapsed) {
+  if (!folderEl) return;
+  const folderId = folderEl.dataset.sideFolder;
+  const head = folderEl.querySelector(".side-folder-head");
+  const items = folderEl.querySelector(".side-folder-items");
+  folderEl.classList.toggle("is-collapsed", collapsed);
+  if (head) head.setAttribute("aria-expanded", String(!collapsed));
+  if (items) items.toggleAttribute("hidden", collapsed);
+  const next = savedFolderCollapse();
+  next[folderId] = collapsed;
+  rememberFolderCollapse(next);
+}
+
+function ensureFolderOpenForTab(tabName) {
+  const button = byId(TAB_BUTTONS[tabName]);
+  const folder = button?.closest(".side-folder");
+  if (folder?.classList.contains("is-collapsed")) setFolderCollapsed(folder, false);
+}
+
+function applyFolderCollapse() {
+  const saved = savedFolderCollapse();
+  for (const folder of document.querySelectorAll(".side-folder")) {
+    const folderId = folder.dataset.sideFolder;
+    setFolderCollapsed(folder, Boolean(saved[folderId]));
+  }
+}
+
+function bindSidebarFolders() {
+  for (const head of document.querySelectorAll(".side-folder-head")) {
+    head.addEventListener("click", () => {
+      const folder = head.closest(".side-folder");
+      if (!folder) return;
+      setFolderCollapsed(folder, !folder.classList.contains("is-collapsed"));
+    });
+  }
+}
+
+function clearDropMarks() {
+  for (const button of sidebarTabs()) button.classList.remove("is-dragging", "is-drop-before", "is-drop-after");
+}
+
+function bindTabReorder() {
+  applyTabOrder(savedTabOrder());
+  let dragged = null;
+
+  const markDrop = (button, clientY) => {
+    for (const item of sidebarTabs()) item.classList.remove("is-drop-before", "is-drop-after");
+    if (!button || button === dragged) return null;
+    const rect = button.getBoundingClientRect();
+    const before = clientY < rect.top + rect.height / 2;
+    button.classList.add(before ? "is-drop-before" : "is-drop-after");
+    return before;
+  };
+
+  document.addEventListener("dragover", (event) => {
+    if (!dragged) return;
+    event.preventDefault();
+    const under = event.target.closest?.("[data-dashboard-tab]");
+    markDrop(under, event.clientY);
+  });
+
+  for (const button of sidebarTabs()) {
+    button.draggable = true;
+    button.addEventListener("dragstart", (event) => {
+      dragged = button;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", button.dataset.dashboardTab);
+      button.classList.add("is-dragging");
+    });
+    button.addEventListener("dragover", (event) => {
+      if (!dragged || dragged === button) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      markDrop(button, event.clientY);
+    });
+    button.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const source = sidebarTabs().find((item) => item.dataset.dashboardTab === event.dataTransfer.getData("text/plain"));
+      if (!source || source === button) return;
+      const before = event.clientY < button.getBoundingClientRect().top + button.offsetHeight / 2;
+      placeTab(source, button, before);
+    });
+    button.addEventListener("dragend", () => {
+      dragged = null;
+      clearDropMarks();
+    });
+  }
+}
+
+export function setDashboardTab(name, moveFocus = false) {
+  S.dashboardTab = DASHBOARD_TABS.includes(name) ? name : "dialer";
+  rememberDashboardTab(S.dashboardTab);
+  ensureFolderOpenForTab(S.dashboardTab);
+  syncPerformanceDocumentHeight();
+  const selectedButton = byId(TAB_BUTTONS[S.dashboardTab]);
+  for (const button of document.querySelectorAll("[data-dashboard-tab]")) {
+    const selected = button === selectedButton;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-selected", String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  }
+  byId("dialerTabPanel").hidden = S.dashboardTab !== "dialer";
+  byId("aiDialerAgentTabPanel").hidden = S.dashboardTab !== "aiDialerAgent";
+  byId("metricsPanel").hidden = S.dashboardTab !== "performance";
+  for (const tab of ["performance", "pipeline", "workflow", "prospects", "pool", "dials"]) {
+    byId(`${tab}TabPanel`).hidden = S.dashboardTab !== tab;
+  }
+  setText("pageTitle", TAB_TITLES[S.dashboardTab]);
+  byId("crmView")?.classList.toggle("is-workflow-view", S.dashboardTab === "workflow");
+  if (S.dashboardTab === "performance") {
+    S.performanceFetchedAt = 0;
+    S.performancePainted = null;
+  }
+  if (S.dashboardTab === "prospects") renderTable();
+  if (S.dashboardTab === "pool") renderCallerPool();
+  render();
+  if (S.dashboardTab === "dials") {
+    import("../features/_dialer/dials.js").then((module) => module.refreshDialsTab());
+  }
+  if (S.dashboardTab === "pipeline") {
+    import("../features/pipeline.js").then((module) => {
+      module.renderPipelineEditor();
+      module.renderPipelineBoardAndRemember();
+    });
+  }
+  if (S.dashboardTab === "workflow") {
+    import("../features/workflow.js").then((module) => module.initWorkflowTab());
+  }
+  if (S.dashboardTab === "performance") {
+    import("../features/performance.js").then((module) => module.repaintPerformanceChart());
+  }
+  if (moveFocus) selectedButton.focus();
+}
+
+export function setPerformanceMode(mode) {
+  S.performanceMode = mode === "all" ? "all" : "summary";
+  byId("performanceTabPanel").dataset.mode = S.performanceMode;
+  for (const button of document.querySelectorAll("[data-performance-mode]")) {
+    const selected = button.dataset.performanceMode === S.performanceMode;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+}
+
+export function bindNavigation() {
+  setPerformanceMode(S.performanceMode);
+  applyFolderCollapse();
+  bindSidebarFolders();
+  bindTabReorder();
+  for (const tabButton of sidebarTabs()) {
+    tabButton.title = "Drag to reorder";
+    tabButton.addEventListener("click", () => setDashboardTab(tabButton.dataset.dashboardTab));
+    tabButton.addEventListener("keydown", (event) => {
+      if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+        event.preventDefault();
+        const tabs = sidebarTabs();
+        const index = tabs.indexOf(tabButton);
+        const sibling = tabs[index + (event.key === "ArrowUp" ? -1 : 1)];
+        if (sibling) placeTab(tabButton, sibling, event.key === "ArrowUp");
+        tabButton.focus();
+        return;
+      }
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const tabs = sidebarTabs().map((button) => button.dataset.dashboardTab);
+      const index = tabs.indexOf(tabButton.dataset.dashboardTab);
+      const forward = event.key === "ArrowRight" || event.key === "ArrowDown";
+      const next = event.key === "Home" ? 0
+        : event.key === "End" ? tabs.length - 1
+          : (index + (forward ? 1 : tabs.length - 1)) % tabs.length;
+      setDashboardTab(tabs[next], true);
+    });
+  }
+  for (const modeButton of document.querySelectorAll("[data-performance-mode]")) {
+    modeButton.addEventListener("click", () => setPerformanceMode(modeButton.dataset.performanceMode));
+  }
+  window.addEventListener("resize", syncPerformanceDocumentHeight);
+  setDashboardTab(savedDashboardTab());
+  requestAnimationFrame(() => {
+    syncPerformanceDocumentHeight();
+  });
+}

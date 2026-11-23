@@ -1,0 +1,277 @@
+"""Canonical top-level JSON keys for public HTTP responses.
+
+Human-oriented field descriptions live in docs/ARCHITECTURE.md. Tests import
+these tuples so the contract stays in one place.
+"""
+
+from typing import TypedDict
+
+# --- Dialer snapshots (GET /api/state, nested "state" on mutations) ---
+
+DIALER_STATE_KEYS = (
+    "active_call_started_at",
+    "active_lead",
+    "active_lead_id",
+    "activity_log",
+    "advance_at",
+    "agent_ready",
+    "ai_agents",
+    "ai_dial_starved",
+    "ai_voice_configured",
+    "ai_voice_sessions",
+    "ai_voice_stream_active",
+    "caller_ids",
+    "caller_id_group",
+    "counts",
+    "current_caller_id",
+    "dial_pool_status",
+    "global_dialer_pool",
+    "global_dialer_pool_count",
+    "in_flight",
+    "last_error",
+    "last_event",
+    "leads_version",
+    "live_transcript",
+    "pipeline_revision",
+    "pipeline_steps",
+    "manual_lead_id",
+    "next_lead",
+    "paused",
+    "pending_outcome",
+    "pending_outcome_id",
+    "pickup_answered_by",
+    "pool",
+    "queue_count",
+    "requires_browser_voice",
+    "running",
+    "selected_business_type",
+    "selected_timezone",
+    "session_stats",
+    "settings",
+    "stage",
+    "tag_call",
+    "timezone_groups",
+    "voice_profile",
+)
+
+LIVE_STATE_KEYS = tuple(key for key in DIALER_STATE_KEYS if key != "pool")
+
+LEADS_CATALOG_KEYS = (
+    "archived_dials",
+    "business_type_options",
+    "counts",
+    "dial_records",
+    "dial_records_version",
+    "dials_version",
+    "global_dialer_pool",
+    "leads",
+    "leads_version",
+    "pipeline_revision",
+    "pipeline_steps",
+    "pool",
+    "timezone_groups",
+)
+
+DIAL_RECORD_SUMMARY_KEYS = ("dial_count", "id", "saved_at", "title")
+
+DIALER_SETTINGS_KEYS = (
+    "auto_advance_delay",
+    "break_nudge_minutes",
+    "calling_end_hour",
+    "calling_start_hour",
+    "conversation_threshold",
+    "opening_script",
+    "session_goal",
+    "sound_volume",
+    "sounds_enabled",
+)
+
+SETTINGS_VIEW_KEYS = (
+    "account_email",
+    "account_sid",
+    "ai_bridge_app_url",
+    "ai_bridge_embedded",
+    "ai_bridge_secret",
+    "ai_bridge_wss_url",
+    "ai_voicemail_drop",
+    "ai_voicemail_message",
+    "ai_llm_model",
+    "api_key",
+    "api_secret",
+    "auth_token",
+    "auto_advance_delay",
+    "break_nudge_minutes",
+    "calling_end_hour",
+    "calling_start_hour",
+    "cartesia_api_key",
+    "cartesia_voice_id",
+    "conversation_threshold",
+    "daily_conversation_goal",
+    "daily_goal_anchor",
+    "daily_goal_minutes",
+    "daily_goal_weekly_step",
+    "has_ai_bridge_secret",
+    "has_api_secret",
+    "has_auth_token",
+    "has_cartesia_api_key",
+    "has_openai_api_key",
+    "opening_script",
+    "openai_api_key",
+    "pipeline_custom_steps",
+    "pipeline_locked_step_keys",
+    "public_base_url",
+    "session_goal",
+    "sound_volume",
+    "sounds_enabled",
+    "storage",
+    "twiml_app_sid",
+)
+
+SESSION_STATS_KEYS = (
+    "id",
+    "started_at",
+    "ended_at",
+    "goal",
+    "goal_reached_at",
+    "dials",
+    "connects",
+    "conversations",
+    "meetings_booked",
+    "current_streak",
+    "best_streak",
+)
+
+IN_FLIGHT_KEYS = ("answered_by", "caller_id", "lead", "lead_id", "name", "slot_index", "state")
+
+LIVE_TRANSCRIPT_KEYS = ("answered_by", "lead_id", "lines", "partials", "transcribing")
+
+ACTIVITY_LOG_ENTRY_KEYS = ("id", "message", "source", "timestamp")
+
+COUNTS_KEYS = ("booked", "calling", "new", "total")
+
+# --- CRM lead row (GET /api/leads → leads[], pool[], active_lead, etc.) ---
+
+LEAD_KEYS = (
+    "business",
+    "fields",
+    "id",
+    "name",
+    "phone",
+    "scheduled_until",
+    "status",
+    "timezone",
+    "transcript",
+)
+
+LEAD_OPTIONAL_KEYS = (
+    "booked_at",
+    "call_log",
+    "passed_at",
+    "pipeline_history",
+    "pipeline_step",
+    "pipeline_step_entered_at",
+    "status_history",
+)
+
+CALL_LOG_ENTRY_KEYS = (
+    "answered_by",
+    "caller_id",
+    "connected",
+    "duration_seconds",
+    "ended_at",
+    "id",
+    "outcome",
+    "started_at",
+    "transcript_lines",
+)
+
+# --- Metrics bump store (GET /api/metrics) ---
+
+METRICS_SNAPSHOT_KEYS = ("all_time", "daily", "today")
+
+METRICS_DAILY_ROW_KEYS = ("booked", "connected", "date", "dials")
+
+# --- Performance analytics (GET /api/performance) ---
+
+PERFORMANCE_PAYLOAD_KEYS = (
+    "conversation_min_seconds",
+    "counts",
+    "daily",
+    "funnel",
+    "has_activity",
+    "metrics_booked",
+    "pipeline_booked",
+    "range",
+    "timezone",
+    "trend",
+)
+
+PERFORMANCE_DAILY_KEYS = (
+    "conversation_goal",
+    "conversations",
+    "range",
+    "talk_minutes",
+    "talk_minutes_goal",
+)
+
+PERFORMANCE_FUNNEL_KEYS = (
+    "connected_to_booked",
+    "connected_to_conversations",
+    "conversations_to_booked",
+    "dials_to_connected",
+)
+
+PERFORMANCE_COUNTS_KEYS = (
+    "booked",
+    "connected",
+    "conversations",
+    "dials",
+    "talk_seconds",
+)
+
+PERFORMANCE_TREND_KEYS = ("buckets", "grain", "period_end", "period_start")
+
+PERFORMANCE_TREND_BUCKET_KEYS = ("booked", "date", "dials", "hour", "pickups")
+
+
+class LeadRecord(TypedDict, total=False):
+    """Prospect row returned from the CRM catalog and embedded in dialer state."""
+
+    id: str
+    name: str
+    business: str
+    phone: str
+    timezone: str
+    status: str
+    scheduled_until: str | None
+    transcript: list
+    fields: dict
+    call_log: list
+    booked_at: str | None
+    passed_at: str | None
+    status_history: list
+
+
+class DialerStateResponse(TypedDict, total=False):
+    """GET /api/state and nested state on POST mutations."""
+
+    running: bool
+    stage: str
+    leads_version: int
+
+
+def assert_top_level_keys(payload, keys):
+    """Raise AssertionError when payload keys differ from the contract tuple."""
+    if not isinstance(payload, dict):
+        raise AssertionError(f"expected dict, got {type(payload).__name__}")
+    expected = tuple(sorted(keys))
+    actual = tuple(sorted(payload))
+    if actual != expected:
+        missing = sorted(set(expected) - set(actual))
+        extra = sorted(set(actual) - set(expected))
+        detail = []
+        if missing:
+            detail.append(f"missing {missing}")
+        if extra:
+            detail.append(f"extra {extra}")
+        raise AssertionError("; ".join(detail))
