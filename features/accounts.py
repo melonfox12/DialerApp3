@@ -3,6 +3,7 @@
 import threading
 import time
 
+from features import org
 from features.dialer import Dialer, TokenIndex
 from features.metrics import MetricsStore, SupabaseMetricsStore
 from features._prospects.dial_archive import DialArchiveStore
@@ -89,6 +90,11 @@ class AppRuntime:
             existing = self.sessions.get(user_id)
         if existing:
             existing.dialer.account_email = user.get("email") or existing.dialer.account_email
+            try:
+                membership = org.sync_user_on_login(self.client, user)
+            except OSError:
+                membership = org.load_membership(self.client, user_id)
+            org.attach_membership_to_dialer(existing.dialer, membership)
             return existing
         crm = ProspectStore(client=self.client, user_id=user_id)
         metrics = SupabaseMetricsStore(self.client, user_id=user_id)
@@ -108,6 +114,11 @@ class AppRuntime:
             crm.sync_pipeline_from_account_values(merged, migrate=False)
         except ValueError:
             pass
+        try:
+            membership = org.sync_user_on_login(self.client, user)
+        except OSError:
+            membership = org.load_membership(self.client, user_id)
+        org.attach_membership_to_dialer(dialer, membership)
         account = Account(crm, metrics, dialer, dial_archive, dial_records)
         with self.session_lock:
             current = self.sessions.get(user_id)

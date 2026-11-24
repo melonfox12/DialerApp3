@@ -43,6 +43,9 @@ export function rendererScopeEnabled(scope) {
       case "performance":
         if (tab === "performance") return true;
         break;
+      case "team":
+        if (tab === "team") return true;
+        break;
       case "pipeline":
         if (tab === "pipeline") return true;
         break;

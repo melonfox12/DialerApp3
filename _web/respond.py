@@ -62,6 +62,7 @@ class HandlerMixin:
                 os.path.join(STATIC_DIR, "features", "ai-dialer-agent.html"),
                 os.path.join(STATIC_DIR, "features", "session-summary-dialog.html"),
                 os.path.join(STATIC_DIR, "features", "performance.html"),
+                os.path.join(STATIC_DIR, "features", "team.html"),
                 os.path.join(STATIC_DIR, "features", "pipeline.html"),
                 os.path.join(STATIC_DIR, "features", "workflow.html"),
                 os.path.join(STATIC_DIR, "features", "prospects.html"),

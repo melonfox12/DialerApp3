@@ -101,7 +101,9 @@ class HttpContractTests(unittest.TestCase):
 
         status, payload, _type = self.json_request("GET", "/api/auth/me")
         self.assertEqual(status, 200)
-        self.assertEqual(payload, {"id": "", "email": ""})
+        self.assertEqual(payload.get("id"), "")
+        self.assertEqual(payload.get("email"), "")
+        self.assertFalse(payload.get("can_manage_team"))
 
         status, payload, _type = self.json_request("GET", "/api/state")
         self.assertEqual(status, 200)
@@ -511,6 +513,10 @@ EXPECTED_ROUTES = {
     ("GET", "/api/performance"),
     ("POST", "/api/performance/goal"),
     ("POST", "/api/bookings"),
+    ("GET", "/api/team/roster"),
+    ("GET", "/api/team/members/{user_id}/metrics"),
+    ("GET", "/api/team/members/{user_id}/live"),
+    ("POST", "/api/team/invites"),
     ("GET", "/api/ai-agents"),
     ("POST", "/api/ai-agents/create"),
     ("POST", "/api/ai-agents/duplicate"),

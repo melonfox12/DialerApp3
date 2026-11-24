@@ -263,6 +263,13 @@ def resolve_caller_id_group(key):
 def caller_ids_for_group(key):
     return list(CALLER_ID_GROUPS[resolve_caller_id_group(key)]["caller_ids"])
 
+ORG_ROLES = ("owner", "manager", "rep")
+ORG_MANAGER_ROLES = ("owner", "manager")
+ORG_MEMBER_STATUSES = ("active", "invited", "disabled")
+DEFAULT_ORG_NAME = "My team"
+TEAM_ONLINE_SECONDS = 90
+TEAM_PRESENCE_WRITE_SECONDS = 30
+
 SETTING_DEFAULTS = {
     "PIPELINE_CUSTOM_STEPS_JSON": "",
     "SESSION_GOAL": "20",

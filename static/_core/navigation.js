@@ -4,7 +4,7 @@ import { renderCallerPool, renderTable } from "./registry.js";
 import { render } from "./render.js";
 import { S } from "./state.js";
 
-const DASHBOARD_TABS = ["dialer", "aiDialerAgent", "performance", "pipeline", "workflow", "prospects", "pool", "dials"];
+const DASHBOARD_TABS = ["dialer", "aiDialerAgent", "performance", "team", "pipeline", "workflow", "prospects", "pool", "dials"];
 const PRIMARY_DASHBOARD_TABS = ["dialer", "prospects", "pipeline"];
 const LOCKED_DASHBOARD_TABS = ["aiDialerAgent", "performance", "workflow", "pool", "dials"];
 const TAB_ORDER_KEY = "prospect-desk-sidebar-order";
@@ -26,6 +26,7 @@ const TAB_BUTTONS = {
   dialer: "dialerTabButton",
   aiDialerAgent: "aiDialerAgentTabButton",
   performance: "performanceTabButton",
+  team: "teamTabButton",
   pipeline: "pipelineTabButton",
   workflow: "workflowTabButton",
   prospects: "prospectsTabButton",
@@ -36,6 +37,7 @@ const TAB_TITLES = {
   dialer: "Dialer",
   aiDialerAgent: "AI Dialer Agent",
   performance: "Performance",
+  team: "Team",
   pipeline: "Pipeline",
   workflow: "Workflow",
   prospects: "Prospects",
@@ -336,7 +338,8 @@ export function setDashboardTab(name, moveFocus = false) {
   byId("dialerTabPanel").hidden = S.dashboardTab !== "dialer";
   byId("aiDialerAgentTabPanel").hidden = S.dashboardTab !== "aiDialerAgent";
   byId("metricsPanel").hidden = S.dashboardTab !== "performance";
-  for (const tab of ["performance", "pipeline", "workflow", "prospects", "pool", "dials"]) {
+  byId("teamPanel").hidden = S.dashboardTab !== "team";
+  for (const tab of ["performance", "team", "pipeline", "workflow", "prospects", "pool", "dials"]) {
     byId(`${tab}TabPanel`).hidden = S.dashboardTab !== tab;
   }
   setText("pageTitle", TAB_TITLES[S.dashboardTab]);
@@ -362,6 +365,9 @@ export function setDashboardTab(name, moveFocus = false) {
   }
   if (S.dashboardTab === "performance") {
     import("../features/performance.js").then((module) => module.repaintPerformanceChart());
+  }
+  if (S.dashboardTab === "team") {
+    import("../features/team.js").then((module) => module.renderTeam());
   }
   if (moveFocus) selectedButton.focus();
 }

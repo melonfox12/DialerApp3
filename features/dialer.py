@@ -241,7 +241,12 @@ def get_leads(request):
 
 def get_live(request):
     try:
-        request.send_json(200, request.account.dialer.live_state())
+        from features import team
+
+        dialer = request.account.dialer
+        payload = dialer.live_state()
+        team.maybe_record_presence(request.runtime, dialer, payload)
+        request.send_json(200, payload)
     except OSError as exc:
         request.report_storage_error(exc)
 

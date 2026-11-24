@@ -26,6 +26,22 @@ Dialer Twilio credentials and session preferences are saved per Google account i
 
 After pulling a new version, re-run [`schema.sql`](./schema.sql) in the Supabase SQL editor before restarting `server.py`. It is safe to run on an existing project. The dialer now records metrics through the `increment_metric` function defined there; until it exists, every metric update fails.
 
+For manager/rep **Team** views, also apply [`migrations/202611232200_org_structure.sql`](./migrations/202611232200_org_structure.sql) if it is not already in your project (new installs include it at the end of `schema.sql`).
+
+## Organization / team (manager dashboard)
+
+1. Sign in once with your Google manager account.
+2. Copy your user UUID from **Authentication → Users** in Supabase.
+3. From the project root:
+
+```powershell
+python -m scripts.bootstrap_org --owner-user-id YOUR-USER-UUID --org-name "Merchfly" --invite rep@gmail.com
+```
+
+4. Restart `server.py`. The **Team** tab appears for `owner` and `manager` roles. Reps invited by email join when they sign in with that Google account.
+
+Reps keep their own prospects and metrics (`user_id`). Managers read team data through `/api/team/*` without signing in as the rep.
+
 ## Move existing local data
 
 After running the SQL and configuring `.env`, you can run:

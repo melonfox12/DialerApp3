@@ -1,4 +1,5 @@
 import { byId, render, request, S, setUnauthorizedHandler, showToast } from "../core.js";
+import { syncTeamChrome } from "./team.js";
 import { drawProspectWaveform, refreshState } from "./dialer.js";
 import { applySavedSettings } from "./settings.js";
 
@@ -33,6 +34,26 @@ export function syncAccountChrome(session) {
   emailEl.textContent = email;
 }
 
+export async function refreshAccountContext() {
+  if (!S.googleAuthEnabled || !S.accessToken) {
+    S.canManageTeam = false;
+    S.orgRole = "";
+    S.orgId = "";
+    syncTeamChrome();
+    return;
+  }
+  try {
+    const me = await request("/api/auth/me");
+    S.canManageTeam = Boolean(me.can_manage_team);
+    S.orgRole = me.role || "";
+    S.orgId = me.org_id || "";
+    syncTeamChrome();
+  } catch {
+    S.canManageTeam = false;
+    syncTeamChrome();
+  }
+}
+
 export async function bootApp() {
   hideLoginGate();
   drawProspectWaveform(0);
@@ -44,6 +65,7 @@ export async function bootApp() {
       showToast("Complete your Twilio Voice credentials and callback URL in Settings to start dialing.");
     }
   }).catch(() => {});
+  refreshAccountContext().catch(() => {});
 }
 
 export async function initAuth() {
@@ -57,10 +79,7 @@ export async function initAuth() {
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     S.accessToken = session?.access_token || null;
     syncAccountChrome(session);
-    if (session?.access_token && S.dashboardTab === "performance") {
-      S.performanceFetchedAt = 0;
-      render();
-    }
+    refreshAccountContext().then(() => render()).catch(() => render());
   });
   const { data: { session } } = await supabaseClient.auth.getSession();
   S.accessToken = session?.access_token || null;

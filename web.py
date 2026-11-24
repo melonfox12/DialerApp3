@@ -6,7 +6,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
 from _web.respond import HandlerMixin
-from features import ai_voice_routes, dialer, metrics, prospects, settings
+from features import ai_voice_routes, dialer, metrics, org, prospects, settings, team
 from features.accounts import resolve_account
 from shared.config import read_env
 from shared.infra import debug_event
@@ -32,7 +32,12 @@ def get_auth_me(request):
     user = request.account.dialer if request.account else None
     email = getattr(user, "account_email", "") if user else ""
     user_id = getattr(user, "account_user_id", "") if user else ""
-    request.send_json(200, {"id": user_id or "", "email": email or ""})
+    payload = {"id": user_id or "", "email": email or ""}
+    if user:
+        payload.update(org.membership_for_auth(user))
+    else:
+        payload.update({"org_id": "", "org_name": "", "role": "", "can_manage_team": False})
+    request.send_json(200, payload)
 
 
 def ingest_client_debug(request):
@@ -67,7 +72,12 @@ SYSTEM_ROUTES = [
 ]
 
 FEATURE_ROUTES = (
-    settings.ROUTES + metrics.ROUTES + prospects.ROUTES + dialer.ROUTES + ai_voice_routes.ROUTES
+    settings.ROUTES
+    + metrics.ROUTES
+    + prospects.ROUTES
+    + dialer.ROUTES
+    + team.ROUTES
+    + ai_voice_routes.ROUTES
 )
 
 

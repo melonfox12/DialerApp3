@@ -1,0 +1,41 @@
+            <section id="teamPanel" class="metrics-panel dialer-run-panel" aria-labelledby="teamTitle" hidden>
+              <div id="teamTabPanel" class="dashboard-tab-panel team-tab-panel" role="tabpanel" aria-labelledby="teamTabButton" hidden>
+                <div class="dialer-document team-document">
+                  <header class="team-header">
+                    <div>
+                      <h2 id="teamTitle">Team</h2>
+                      <p id="teamOrgSubtitle" class="team-subtitle">Roster and live activity</p>
+                    </div>
+                    <form id="teamInviteForm" class="team-invite" autocomplete="off">
+                      <label class="form-field team-invite-field">
+                        <span>Invite rep</span>
+                        <input id="teamInviteEmail" type="email" name="email" placeholder="rep@company.com" required>
+                      </label>
+                      <button class="button button-secondary" type="submit">Send invite</button>
+                    </form>
+                  </header>
+                  <div class="table-scroll team-table-scroll" role="region" aria-label="Team roster" tabindex="0">
+                    <table id="teamTable" class="team-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Member</th>
+                          <th scope="col">Role</th>
+                          <th scope="col">Status</th>
+                          <th scope="col">Activity</th>
+                          <th scope="col">Today</th>
+                        </tr>
+                      </thead>
+                      <tbody id="teamTableBody"></tbody>
+                    </table>
+                    <div id="teamEmpty" class="empty-state" hidden>
+                      <h2>No team members yet</h2>
+                      <p>Run the org bootstrap script or invite a rep by email.</p>
+                    </div>
+                  </div>
+                  <section id="teamMemberDetail" class="team-member-detail" hidden aria-live="polite">
+                    <h3 id="teamMemberDetailTitle" class="team-section-label">Member detail</h3>
+                    <div id="teamMemberDetailBody" class="team-detail-body"></div>
+                  </section>
+                </div>
+              </div>
+            </section>
