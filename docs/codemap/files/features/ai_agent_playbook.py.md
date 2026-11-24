@@ -71,7 +71,7 @@ _Flatten older structured playbooks into one prompt block._
 - Set raw to str(...).
 - Try:
 -   Set parsed to json.loads(...).
-- On <ast.Attribute object at 0x00000242BC224450>:
+- On <ast.Attribute object at 0x000001E0F8ED5C10>:
 -   Set parsed to a dict.
 - If isinstance(...):
 -   Set parsed to a dict.

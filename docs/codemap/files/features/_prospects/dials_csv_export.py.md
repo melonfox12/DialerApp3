@@ -23,7 +23,7 @@
 -   Return 'Time unavailable'.
 - Try:
 -   Set moment to datetime.fromisoformat(...).
-- On <ast.Tuple object at 0x00000242BC1A5690>:
+- On <ast.Tuple object at 0x000001E0F8E76110>:
 -   Return 'Time unavailable'.
 - If moment.tzinfo compared to ...:
 -   Set moment to moment.replace(...).

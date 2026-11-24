@@ -165,7 +165,7 @@
 - Call org.assert_can_view_member(...).
 - Try:
 -   Set days to max(...).
-- On <ast.Tuple object at 0x00000242BC2A8750>:
+- On <ast.Tuple object at 0x000001E0F8E86750>:
 -   Set days to 7.
 - Set metrics to SupabaseMetricsStore(...).
 
@@ -234,10 +234,10 @@
 **Pseudocode:**
 - Try:
 -   Call request.send_json(...).
-- On <ast.Name object at 0x00000242BC13F3D0>:
+- On <ast.Name object at 0x000001E0F8E82F10>:
 -   Set request._trace_error to str(...).
 -   Call request.send_json(...).
-- On <ast.Name object at 0x00000242BC2D8150>:
+- On <ast.Name object at 0x000001E0F8E25E10>:
 -   Call request.report_storage_error(...).
 
 **Calls →**
@@ -255,10 +255,10 @@
 - Set days to a boolean condition[...].
 - Try:
 -   Call request.send_json(...).
-- On <ast.Name object at 0x00000242BC188590>:
+- On <ast.Name object at 0x000001E0F8E58D90>:
 -   Set request._trace_error to str(...).
 -   Call request.send_json(...).
-- On <ast.Name object at 0x00000242BC36D250>:
+- On <ast.Name object at 0x000001E0F8F8DA50>:
 
 **Calls →**
 1. `urllib.parse.parse.parse_qs`
@@ -279,10 +279,10 @@
 **Pseudocode:**
 - Try:
 -   Call request.send_json(...).
-- On <ast.Name object at 0x00000242BC36E150>:
+- On <ast.Name object at 0x000001E0F8E6CB10>:
 -   Set request._trace_error to str(...).
 -   Call request.send_json(...).
-- On <ast.Name object at 0x00000242BC36C410>:
+- On <ast.Name object at 0x000001E0F8E6D810>:
 -   Set request._trace_error to str(...).
 -   Call request.send_json(...).
 

@@ -481,7 +481,7 @@ _Name plus location for callback sync between duplicate imports._
 **Pseudocode:**
 - Try:
 -   Set moment to datetime.fromisoformat(...).
-- On <ast.Tuple object at 0x00000242BC180ED0>:
+- On <ast.Tuple object at 0x000001E0F8E18950>:
 -   Return None.
 - If moment.tzinfo compared to ...:
 -   Set moment to moment.replace(...).
@@ -699,7 +699,7 @@ _Prospects with a call_log row still in progress (dialed but not finished)._
 - For each Tuple in dial_windows(...):
 -   Try:
 -     Set moment to datetime.fromisoformat(...).
--   On <ast.Tuple object at 0x00000242BC21EE90>:
+-   On <ast.Tuple object at 0x000001E0F8ECF490>:
 -   If moment.tzinfo compared to ...:
 -     Set moment to moment.replace(...).
 -   If moment compared to ...:

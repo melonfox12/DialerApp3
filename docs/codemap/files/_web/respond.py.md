@@ -132,7 +132,7 @@
 - Try:
 -   With open(...):
 -     Set body to source.read(...).
-- On <ast.Name object at 0x00000242BC1B4450>:
+- On <ast.Name object at 0x000001E0F8E02050>:
 -   Call self.send_json(...).
 -   Return nothing.
 - If filename.endswith(...):

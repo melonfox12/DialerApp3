@@ -134,7 +134,7 @@
 -   Return None.
 - Try:
 -   Set number to Decimal(...).
-- On <ast.Name object at 0x00000242BC293950>:
+- On <ast.Name object at 0x000001E0F8E85A10>:
 -   Return None.
 - If number.is_finite(...):
 
@@ -156,7 +156,7 @@
 - If a boolean condition:
 -   Try:
 -     Return date.fromisoformat(...).
--   On <ast.Name object at 0x00000242BC13A5D0>:
+-   On <ast.Name object at 0x000001E0F8F318D0>:
 -     No-op.
 
 **Calls →**
@@ -181,7 +181,7 @@
 - Set sample to text[...].
 - Try:
 -   Set dialect to csv.Sniffer(...).sniff(...).
-- On <ast.Attribute object at 0x00000242BC210D90>:
+- On <ast.Attribute object at 0x000001E0F8E34A10>:
 -   Return csv.excel.
 - Set first to next(...).
 - If a boolean condition:

@@ -20,7 +20,7 @@ _A connect is a dial where the agent was bridged to the prospect (picked up)._
 **Pseudocode:**
 - Try:
 -   Set moment to datetime.fromisoformat(...).
-- On <ast.Name object at 0x00000242BC166D10>:
+- On <ast.Name object at 0x000001E0F9032B90>:
 -   Return None.
 - If moment.tzinfo compared to ...:
 -   Set moment to moment.replace(...).
@@ -45,7 +45,7 @@ _The browser's IANA zone, or UTC when it is missing or unknown._
 **Pseudocode:**
 - Try:
 -   Return ZoneInfo(...).
-- On <ast.Tuple object at 0x00000242BC167790>:
+- On <ast.Tuple object at 0x000001E0F8F5BB10>:
 -   Return timezone.utc.
 
 **Calls →**

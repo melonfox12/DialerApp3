@@ -35,7 +35,7 @@
 -       Set data to json.loads(...).
 -       If isinstance(...):
 -         Set self.data to data.
--     On <ast.Tuple object at 0x00000242BC309F90>:
+-     On <ast.Tuple object at 0x000001E0F8FA67D0>:
 -       No-op.
 
 **Calls →**
@@ -218,7 +218,7 @@
 **Pseudocode:**
 - Try:
 -   Call request.send_json(...).
-- On <ast.Name object at 0x00000242BC2B1F10>:
+- On <ast.Name object at 0x000001E0F8F0FF10>:
 -   Call request.report_storage_error(...).
 
 **Calls →**

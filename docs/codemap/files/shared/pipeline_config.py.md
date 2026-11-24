@@ -37,7 +37,7 @@ _Turn user input into a valid step key: lowercase, letters/digits, underscores b
 - Set label to str(...).strip(...).
 - Try:
 -   Set wait_hours to int(...).
-- On <ast.Tuple object at 0x00000242BC179650>:
+- On <ast.Tuple object at 0x000001E0F8DDAD90>:
 -   Return None.
 
 **Calls →**
@@ -65,7 +65,7 @@ _Parse stored JSON list of custom tail steps. Returns (steps, error_message)._
 -   Return Tuple.
 - Try:
 -   Set data to json.loads(...).
-- On <ast.Attribute object at 0x00000242BC13B150>:
+- On <ast.Attribute object at 0x000001E0F8E56FD0>:
 -   Return Tuple.
 - If isinstance(...):
 

@@ -24,7 +24,7 @@
 - Set flags_path to _flags_path(...).
 - Try:
 -   Set data to json.loads(...).
-- On <ast.Tuple object at 0x00000242BC206D50>:
+- On <ast.Tuple object at 0x000001E0F8E78890>:
 -   Return False.
 - Return bool(...).
 
@@ -48,7 +48,7 @@
 -     Set data to json.loads(...).
 -     If isinstance(...):
 -       Set data to a dict.
-- On <ast.Tuple object at 0x00000242BC1A68D0>:
+- On <ast.Tuple object at 0x000001E0F8E74150>:
 
 **Calls →**
 1. `features._prospects.migration_flags._flags_path`

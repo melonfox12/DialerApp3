@@ -149,7 +149,7 @@ _Stay silent on the answered line until Twilio decides a person is there._
 **Pseudocode:**
 - Try:
 -   Call twilio_request(...).
-- On <ast.Tuple object at 0x00000242BC188D90>:
+- On <ast.Tuple object at 0x000001E0F8DEB090>:
 -   No-op.
 
 **Calls →**
@@ -186,7 +186,7 @@ _False only when Twilio confirms the call already ended. Any lookup problem coun
 -   Return True.
 - Try:
 -   Set info to twilio_request(...).
-- On <ast.Tuple object at 0x00000242BC292B10>:
+- On <ast.Tuple object at 0x000001E0F8E8BC50>:
 -   Return True.
 - Return str(...).lower(...) compared to ....
 
@@ -207,7 +207,7 @@ _Point an answered call at new TwiML once we know a person is on the line._
 -   Return nothing.
 - Try:
 -   Call twilio_request(...).
-- On <ast.Tuple object at 0x00000242BC2710D0>:
+- On <ast.Tuple object at 0x000001E0F8E74490>:
 -   No-op.
 
 **Calls →**
@@ -242,7 +242,7 @@ _Check the API key, then point the TwiML app at this dialer's voice URL._
 **Pseudocode:**
 - Try:
 -   Call twilio_request(...).
-- On <ast.Name object at 0x00000242BC26BD50>:
+- On <ast.Name object at 0x000001E0F8E231D0>:
 -   Set message to str(...).
 -   If 'permissions' compared to ...:
 -     Return True.
@@ -263,7 +263,7 @@ _Check the API key, then point the TwiML app at this dialer's voice URL._
 - Set path to '/Applications/' op urllib.parse.quote(...) op '.json'.
 - Try:
 -   Set app to twilio_request(...).
-- On <ast.Name object at 0x00000242BC12E150>:
+- On <ast.Name object at 0x000001E0F8E25410>:
 -   If 'Twilio error 404' compared to ...:
 -     Raise an error.
 -   Raise an error.

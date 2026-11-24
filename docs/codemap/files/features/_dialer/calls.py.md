@@ -196,7 +196,7 @@ _Move a failed prospect back and wait before filling that open line._
 - If lead_id:
 -   Try:
 -     Call state.crm.defer(...).
--   On <ast.Tuple object at 0x00000242BC263950>:
+-   On <ast.Tuple object at 0x000001E0F8E43210>:
 -     No-op.
 - Call timing._schedule_advance(...).
 

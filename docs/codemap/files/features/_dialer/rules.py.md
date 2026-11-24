@@ -79,7 +79,7 @@ _Clear state.active when it still points at a finished call. Caller must hold st
 **Pseudocode:**
 - Try:
 -   Return DISPOSITION_TO_STATUS[...].
-- On <ast.Name object at 0x00000242BC260050>:
+- On <ast.Name object at 0x000001E0F8E323D0>:
 -   Raise an error.
 
 **Calls →**
@@ -191,7 +191,7 @@ _Clear state.active when it still points at a finished call. Caller must hold st
 -   Return None.
 - Try:
 -   Set zone to ZoneInfo(...).
-- On <ast.Tuple object at 0x00000242BC269910>:
+- On <ast.Tuple object at 0x000001E0F8E22610>:
 -   Return None.
 - Set instant to a boolean condition.
 

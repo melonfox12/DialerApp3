@@ -350,11 +350,11 @@
 - Set rel to rel_posix(...).
 - Try:
 -   Set source to path.read_text(...).
-- On <ast.Name object at 0x00000242BC1C21D0>:
+- On <ast.Name object at 0x000001E0F8F2BFD0>:
 -   Return None.
 - Try:
 -   Set tree to ast.parse(...).
-- On <ast.Name object at 0x00000242BC1DE250>:
+- On <ast.Name object at 0x000001E0F8FA5010>:
 
 **Calls →**
 1. `scripts.build_codemap.rel_posix`
@@ -397,7 +397,7 @@
 - Set rel to rel_posix(...).
 - Try:
 -   Set text to path.read_text(...).
-- On <ast.Name object at 0x00000242BC3B64D0>:
+- On <ast.Name object at 0x000001E0F9053E90>:
 -   Set text to ''.
 - Set rec to FileRecord(...).
 - Set m to re.search(...).

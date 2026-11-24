@@ -142,7 +142,7 @@
 **Pseudocode:**
 - Try:
 -   Return ai_voice_llm.chat_reply(...).
-- On <ast.Attribute object at 0x00000242BC2CD190>:
+- On <ast.Attribute object at 0x000001E0F8F4C3D0>:
 -   Return ai_voice_llm._fallback_reply(...).
 
 **Calls →**
@@ -364,7 +364,7 @@ _Step VAD in 20 ms mulaw frames (same cadence as the live media bridge)._
 - Set agent_id to str(...).strip(...).
 - Try:
 -   Set chunk to base64.b64decode(...).
-- On <ast.Tuple object at 0x00000242BC2BE190>:
+- On <ast.Tuple object at 0x000001E0F8F59AD0>:
 -   Return nothing.
 - If chunk:
 -   Return nothing.

@@ -21,7 +21,7 @@
 - Set raw to str(...).
 - Try:
 -   Set parsed to json.loads(...).
-- On <ast.Attribute object at 0x00000242BC2A0BD0>:
+- On <ast.Attribute object at 0x000001E0F8F0D950>:
 -   Set parsed to a dict.
 - If isinstance(...):
 -   Set parsed to a dict.

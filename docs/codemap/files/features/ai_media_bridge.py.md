@@ -32,7 +32,7 @@
 - While True:
 -   Try:
 -     Set data to api_json(...).
--   On <ast.Tuple object at 0x00000242BC217E10>:
+-   On <ast.Tuple object at 0x000001E0F8ECA7D0>:
 -   If data.get(...):
 -   For each chunk in a boolean condition:
 -     If a boolean condition:

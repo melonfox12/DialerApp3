@@ -50,7 +50,7 @@ _Backfill Callback (2h) on prospects that have dial-log rows but are still New._
 - If a boolean condition:
 -   Try:
 -     Call saver(...).
--   On <ast.Name object at 0x00000242BC2043D0>:
+-   On <ast.Name object at 0x000001E0F8F10F50>:
 -     No-op.
 - Set path to getattr(...).
 
@@ -75,7 +75,7 @@ _One-time backfill for Nov 5, 2026 dialed prospects still marked New._
 - If dial_archive compared to ...:
 -   Try:
 -     Set archived to dial_archive.snapshot(...).
--   On <ast.Name object at 0x00000242BC206950>:
+-   On <ast.Name object at 0x000001E0F8E85490>:
 -     Set archived to a list.
 
 **Calls →**
@@ -122,7 +122,7 @@ _Copy an open callback onto new prospects with the same name and location._
 - For each item in plan:
 -   Try:
 -     Call state.crm.set_status(...).
--   On <ast.Name object at 0x00000242BC12DD10>:
+-   On <ast.Name object at 0x000001E0F8EA6890>:
 -   Update synced with Add 1.
 - Set dial_caps to state.crm.enforce_dial_caps(...).
 
@@ -404,7 +404,7 @@ _Hang up every line to this prospect._
 - Set moment to when.replace(...).isoformat(...).
 - Try:
 -   Call state.crm.append_call_log(...).
-- On <ast.Name object at 0x00000242BC25C210>:
+- On <ast.Name object at 0x000001E0F8F02D90>:
 -   Call state.record_activity(...).
 
 **Calls →**
@@ -428,7 +428,7 @@ _True when the dial list already shows what started this callback: a skip, or a 
 -     Return True.
 -   Try:
 -     Set started to datetime.fromisoformat(...).
--   On <ast.Name object at 0x00000242BC25E590>:
+-   On <ast.Name object at 0x000001E0F8F15150>:
 -   If started.tzinfo compared to ...:
 
 **Calls →**
@@ -451,7 +451,7 @@ _Keep an open callback that has no matching dial record in the dial list._
 -   If a boolean condition:
 -   Try:
 -     Set due to datetime.fromisoformat(...).
--   On <ast.Name object at 0x00000242BC29D150>:
+-   On <ast.Name object at 0x000001E0F8F17CD0>:
 -   If due.tzinfo compared to ...:
 -   Set remaining to due op now.
 

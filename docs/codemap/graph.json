@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-11-24T18:14:19.853474+00:00",
+    "generated_at": "2026-11-24T21:22:54.746219+00:00",
     "python_files": 65,
     "javascript_files": 85,
     "nodes": 947,
@@ -42439,7 +42439,7 @@
             "Try:",
             "  With open(...):",
             "    Set body to source.read(...).",
-            "On <ast.Name object at 0x00000242BC1B4450>:",
+            "On <ast.Name object at 0x000001E0F8E02050>:",
             "  Call self.send_json(...).",
             "  Return nothing.",
             "If filename.endswith(...):"
@@ -43566,7 +43566,7 @@
           "pseudocode": [
             "Try:",
             "  Set moment to datetime.fromisoformat(...).",
-            "On <ast.Tuple object at 0x00000242BC180ED0>:",
+            "On <ast.Tuple object at 0x000001E0F8E18950>:",
             "  Return None.",
             "If moment.tzinfo compared to ...:",
             "  Set moment to moment.replace(...).",
@@ -43762,7 +43762,7 @@
             "For each Tuple in dial_windows(...):",
             "  Try:",
             "    Set moment to datetime.fromisoformat(...).",
-            "  On <ast.Tuple object at 0x00000242BC21EE90>:",
+            "  On <ast.Tuple object at 0x000001E0F8ECF490>:",
             "  If moment.tzinfo compared to ...:",
             "    Set moment to moment.replace(...).",
             "  If moment compared to ...:"
@@ -44168,7 +44168,7 @@
             "Set label to str(...).strip(...).",
             "Try:",
             "  Set wait_hours to int(...).",
-            "On <ast.Tuple object at 0x00000242BC179650>:",
+            "On <ast.Tuple object at 0x000001E0F8DDAD90>:",
             "  Return None."
           ],
           "calls": [
@@ -44194,7 +44194,7 @@
             "  Return Tuple.",
             "Try:",
             "  Set data to json.loads(...).",
-            "On <ast.Attribute object at 0x00000242BC13B150>:",
+            "On <ast.Attribute object at 0x000001E0F8E56FD0>:",
             "  Return Tuple.",
             "If isinstance(...):"
           ],
@@ -45846,7 +45846,7 @@
             "If lead_id:",
             "  Try:",
             "    Call state.crm.defer(...).",
-            "  On <ast.Tuple object at 0x00000242BC263950>:",
+            "  On <ast.Tuple object at 0x000001E0F8E43210>:",
             "    No-op.",
             "Call timing._schedule_advance(...)."
           ],
@@ -46400,7 +46400,7 @@
           "pseudocode": [
             "Try:",
             "  Set when to datetime.fromisoformat(...).",
-            "On <ast.Name object at 0x00000242BC1A9C90>:",
+            "On <ast.Name object at 0x000001E0F8DFC4D0>:",
             "  Raise an error.",
             "If when.tzinfo compared to ...:",
             "  Raise an error.",
@@ -46843,7 +46843,7 @@
             "If a boolean condition:",
             "  Try:",
             "    Call saver(...).",
-            "  On <ast.Name object at 0x00000242BC2043D0>:",
+            "  On <ast.Name object at 0x000001E0F8F10F50>:",
             "    No-op.",
             "Set path to getattr(...)."
           ],
@@ -46867,7 +46867,7 @@
             "If dial_archive compared to ...:",
             "  Try:",
             "    Set archived to dial_archive.snapshot(...).",
-            "  On <ast.Name object at 0x00000242BC206950>:",
+            "  On <ast.Name object at 0x000001E0F8E85490>:",
             "    Set archived to a list."
           ],
           "calls": [
@@ -46911,7 +46911,7 @@
             "For each item in plan:",
             "  Try:",
             "    Call state.crm.set_status(...).",
-            "  On <ast.Name object at 0x00000242BC12DD10>:",
+            "  On <ast.Name object at 0x000001E0F8EA6890>:",
             "  Update synced with Add 1.",
             "Set dial_caps to state.crm.enforce_dial_caps(...)."
           ],
@@ -47197,7 +47197,7 @@
             "Set moment to when.replace(...).isoformat(...).",
             "Try:",
             "  Call state.crm.append_call_log(...).",
-            "On <ast.Name object at 0x00000242BC25C210>:",
+            "On <ast.Name object at 0x000001E0F8F02D90>:",
             "  Call state.record_activity(...)."
           ],
           "calls": [
@@ -47218,7 +47218,7 @@
             "    Return True.",
             "  Try:",
             "    Set started to datetime.fromisoformat(...).",
-            "  On <ast.Name object at 0x00000242BC25E590>:",
+            "  On <ast.Name object at 0x000001E0F8F15150>:",
             "  If started.tzinfo compared to ...:"
           ],
           "calls": [
@@ -47240,7 +47240,7 @@
             "  If a boolean condition:",
             "  Try:",
             "    Set due to datetime.fromisoformat(...).",
-            "  On <ast.Name object at 0x00000242BC29D150>:",
+            "  On <ast.Name object at 0x000001E0F8F17CD0>:",
             "  If due.tzinfo compared to ...:",
             "  Set remaining to due op now."
           ],
@@ -47650,7 +47650,7 @@
           "pseudocode": [
             "Try:",
             "  Return DISPOSITION_TO_STATUS[...].",
-            "On <ast.Name object at 0x00000242BC260050>:",
+            "On <ast.Name object at 0x000001E0F8E323D0>:",
             "  Raise an error."
           ],
           "calls": [
@@ -47761,7 +47761,7 @@
             "  Return None.",
             "Try:",
             "  Set zone to ZoneInfo(...).",
-            "On <ast.Tuple object at 0x00000242BC269910>:",
+            "On <ast.Tuple object at 0x000001E0F8E22610>:",
             "  Return None.",
             "Set instant to a boolean condition."
           ],
@@ -47953,7 +47953,7 @@
           "pseudocode": [
             "Try:",
             "  Call _place_prospect_call(...).",
-            "On <ast.Name object at 0x00000242BC1D1310>:",
+            "On <ast.Name object at 0x000001E0F8E57C50>:",
             "  Call state.record_activity(...)."
           ],
           "calls": [
@@ -48468,7 +48468,7 @@
           "pseudocode": [
             "Try:",
             "  Call twilio_request(...).",
-            "On <ast.Tuple object at 0x00000242BC188D90>:",
+            "On <ast.Tuple object at 0x000001E0F8DEB090>:",
             "  No-op."
           ],
           "calls": [
@@ -48499,7 +48499,7 @@
             "  Return True.",
             "Try:",
             "  Set info to twilio_request(...).",
-            "On <ast.Tuple object at 0x00000242BC292B10>:",
+            "On <ast.Tuple object at 0x000001E0F8E8BC50>:",
             "  Return True.",
             "Return str(...).lower(...) compared to ...."
           ],
@@ -48519,7 +48519,7 @@
             "  Return nothing.",
             "Try:",
             "  Call twilio_request(...).",
-            "On <ast.Tuple object at 0x00000242BC2710D0>:",
+            "On <ast.Tuple object at 0x000001E0F8E74490>:",
             "  No-op."
           ],
           "calls": [
@@ -48552,7 +48552,7 @@
           "pseudocode": [
             "Try:",
             "  Call twilio_request(...).",
-            "On <ast.Name object at 0x00000242BC26BD50>:",
+            "On <ast.Name object at 0x000001E0F8E231D0>:",
             "  Set message to str(...).",
             "  If 'permissions' compared to ...:",
             "    Return True.",
@@ -48573,7 +48573,7 @@
             "Set path to '/Applications/' op urllib.parse.quote(...) op '.json'.",
             "Try:",
             "  Set app to twilio_request(...).",
-            "On <ast.Name object at 0x00000242BC12E150>:",
+            "On <ast.Name object at 0x000001E0F8E25410>:",
             "  If 'Twilio error 404' compared to ...:",
             "    Raise an error.",
             "  Raise an error.",
@@ -49691,7 +49691,7 @@
             "  Return None.",
             "Try:",
             "  Set number to Decimal(...).",
-            "On <ast.Name object at 0x00000242BC293950>:",
+            "On <ast.Name object at 0x000001E0F8E85A10>:",
             "  Return None.",
             "If number.is_finite(...):"
           ],
@@ -49713,7 +49713,7 @@
             "If a boolean condition:",
             "  Try:",
             "    Return date.fromisoformat(...).",
-            "  On <ast.Name object at 0x00000242BC13A5D0>:",
+            "  On <ast.Name object at 0x000001E0F8F318D0>:",
             "    No-op."
           ],
           "calls": [
@@ -49738,7 +49738,7 @@
             "Set sample to text[...].",
             "Try:",
             "  Set dialect to csv.Sniffer(...).sniff(...).",
-            "On <ast.Attribute object at 0x00000242BC210D90>:",
+            "On <ast.Attribute object at 0x000001E0F8E34A10>:",
             "  Return csv.excel.",
             "Set first to next(...).",
             "If a boolean condition:",
@@ -50310,7 +50310,7 @@
             "      Set self.records to IfExp.",
             "    Else:",
             "      Set self.records to a list.",
-            "  On <ast.Tuple object at 0x00000242BC17D6D0>:"
+            "  On <ast.Tuple object at 0x000001E0F8E87DD0>:"
           ],
           "calls": [
             "features._prospects.dial_archive.LocalDialArchiveStore.path.is_file",
@@ -50835,7 +50835,7 @@
             "      Set self.saved to IfExp.",
             "    Else:",
             "      Set self.saved to a list.",
-            "  On <ast.Tuple object at 0x00000242BC13A510>:"
+            "  On <ast.Tuple object at 0x000001E0F8DFCA10>:"
           ],
           "calls": [
             "features._prospects.dial_records.LocalDialRecordsStore.path.is_file",
@@ -51089,7 +51089,7 @@
             "  Return 'Time unavailable'.",
             "Try:",
             "  Set moment to datetime.fromisoformat(...).",
-            "On <ast.Tuple object at 0x00000242BC1A5690>:",
+            "On <ast.Tuple object at 0x000001E0F8E76110>:",
             "  Return 'Time unavailable'.",
             "If moment.tzinfo compared to ...:",
             "  Set moment to moment.replace(...)."
@@ -51287,7 +51287,7 @@
             "Set flags_path to _flags_path(...).",
             "Try:",
             "  Set data to json.loads(...).",
-            "On <ast.Tuple object at 0x00000242BC206D50>:",
+            "On <ast.Tuple object at 0x000001E0F8E78890>:",
             "  Return False.",
             "Return bool(...)."
           ],
@@ -51311,7 +51311,7 @@
             "    Set data to json.loads(...).",
             "    If isinstance(...):",
             "      Set data to a dict.",
-            "On <ast.Tuple object at 0x00000242BC1A68D0>:"
+            "On <ast.Tuple object at 0x000001E0F8E74150>:"
           ],
           "calls": [
             "features._prospects.migration_flags._flags_path",
@@ -51421,7 +51421,7 @@
             "  Return self._health.",
             "Try:",
             "  Call self._ping(...).",
-            "On <ast.Name object at 0x00000242BC225C90>:"
+            "On <ast.Name object at 0x000001E0F8ED7010>:"
           ],
           "calls": [
             "time.time",
@@ -51441,7 +51441,7 @@
             "  Set existing.dialer.account_email to a boolean condition.",
             "  Try:",
             "    Set membership to org.sync_user_on_login(...).",
-            "  On <ast.Name object at 0x00000242BC226590>:"
+            "  On <ast.Name object at 0x000001E0F8F7E5D0>:"
           ],
           "calls": [
             "features.accounts.AppRuntime.sessions.get",
@@ -51476,7 +51476,7 @@
             "  Return nothing.",
             "Try:",
             "  Call save_app_settings(...).",
-            "On <ast.Name object at 0x00000242BC2BC750>:",
+            "On <ast.Name object at 0x000001E0F8E81D90>:",
             "  Set message to str(...).",
             "  If a boolean condition:"
           ],
@@ -51705,7 +51705,7 @@
             "Set raw to str(...).",
             "Try:",
             "  Set parsed to json.loads(...).",
-            "On <ast.Attribute object at 0x00000242BC224450>:",
+            "On <ast.Attribute object at 0x000001E0F8ED5C10>:",
             "  Set parsed to a dict.",
             "If isinstance(...):",
             "  Set parsed to a dict.",
@@ -52203,7 +52203,7 @@
           "pseudocode": [
             "Try:",
             "  Return ai_voice_llm.chat_reply(...).",
-            "On <ast.Attribute object at 0x00000242BC2CD190>:",
+            "On <ast.Attribute object at 0x000001E0F8F4C3D0>:",
             "  Return ai_voice_llm._fallback_reply(...)."
           ],
           "calls": [
@@ -52429,7 +52429,7 @@
             "Set agent_id to str(...).strip(...).",
             "Try:",
             "  Set chunk to base64.b64decode(...).",
-            "On <ast.Tuple object at 0x00000242BC2BE190>:",
+            "On <ast.Tuple object at 0x000001E0F8F59AD0>:",
             "  Return nothing.",
             "If chunk:",
             "  Return nothing.",
@@ -52679,7 +52679,7 @@
             "Set raw to str(...).",
             "Try:",
             "  Set parsed to json.loads(...).",
-            "On <ast.Attribute object at 0x00000242BC2A0BD0>:",
+            "On <ast.Attribute object at 0x000001E0F8F0D950>:",
             "  Set parsed to a dict.",
             "If isinstance(...):",
             "  Set parsed to a dict.",
@@ -53400,7 +53400,7 @@
             "While True:",
             "  Try:",
             "    Set data to api_json(...).",
-            "  On <ast.Tuple object at 0x00000242BC217E10>:",
+            "  On <ast.Tuple object at 0x000001E0F8ECA7D0>:",
             "  If data.get(...):",
             "  For each chunk in a boolean condition:",
             "    If a boolean condition:"
@@ -53572,7 +53572,7 @@
           "pseudocode": [
             "Try:",
             "  Set payload to json.loads(...).",
-            "On <ast.Attribute object at 0x00000242BC2ACD50>:",
+            "On <ast.Attribute object at 0x000001E0F8E51A50>:",
             "  Return raw[...].",
             "If isinstance(...):",
             "  For each key in Tuple:",
@@ -53877,7 +53877,7 @@
             "Set prompt to 'Given this call transcript as JSON messages, ...'.",
             "Try:",
             "  Set raw to ai_voice_llm.chat_reply(...).",
-            "On <ast.Attribute object at 0x00000242BC2AC290>:",
+            "On <ast.Attribute object at 0x000001E0F8E503D0>:",
             "  Return 'contact_engaged'.",
             "Set key to IfExp."
           ],
@@ -53916,7 +53916,7 @@
             "  Return nothing.",
             "Try:",
             "  Set chunk to base64.b64decode(...).",
-            "On <ast.Tuple object at 0x00000242BC12D090>:",
+            "On <ast.Tuple object at 0x000001E0F8E64490>:",
             "  Return nothing.",
             "If chunk:"
           ],
@@ -55499,7 +55499,7 @@
             "Try:",
             "  Call _maybe_run_nov5_static_callback_migration(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC2B3E10>:",
+            "On <ast.Name object at 0x000001E0F8EC9250>:",
             "  Call request.report_storage_error(...)."
           ],
           "calls": [
@@ -55517,7 +55517,7 @@
             "Try:",
             "  Call _maybe_run_nov5_static_callback_migration(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC2B1710>:",
+            "On <ast.Name object at 0x000001E0F8EC9450>:",
             "  Call request.report_storage_error(...)."
           ],
           "calls": [
@@ -55537,7 +55537,7 @@
             "  Set payload to dialer.live_state(...).",
             "  Call team.maybe_record_presence(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC181A50>:",
+            "On <ast.Name object at 0x000001E0F8EEC3D0>:",
             "  Call request.report_storage_error(...)."
           ],
           "calls": [
@@ -55554,7 +55554,7 @@
           "pseudocode": [
             "Try:",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC185010>:",
+            "On <ast.Name object at 0x000001E0F8F19B50>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...)."
           ],
@@ -55576,7 +55576,7 @@
             "Set business_type to IfExp.",
             "Try:",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC1B49D0>:",
+            "On <ast.Name object at 0x000001E0F8E8AAD0>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...)."
           ],
@@ -55598,7 +55598,7 @@
           "pseudocode": [
             "Try:",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC28A150>:",
+            "On <ast.Name object at 0x000001E0F8E89F90>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...)."
           ],
@@ -55630,7 +55630,7 @@
           "pseudocode": [
             "Try:",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC267E50>:",
+            "On <ast.Name object at 0x000001E0F8F4F3D0>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...)."
           ],
@@ -55735,7 +55735,7 @@
             "Set count to request.account.dialer.backfill_new_dial_callbacks(...).",
             "Try:",
             "  Set state to request.ctx.state(...).",
-            "On <ast.Name object at 0x00000242BC22A790>:",
+            "On <ast.Name object at 0x000001E0F8F32A50>:",
             "  Call request.ctx.log(...).",
             "  Set state to request.account.dialer.public_state(...).",
             "Call request.send_json(...)."
@@ -55758,7 +55758,7 @@
             "Set count to queue.ensure_nov5_static_callback_migration(...).",
             "Try:",
             "  Set state to request.ctx.state(...).",
-            "On <ast.Name object at 0x00000242BC2CE0D0>:",
+            "On <ast.Name object at 0x000001E0F8E32250>:",
             "  Call request.ctx.log(...).",
             "  Set state to dialer.public_state(...)."
           ],
@@ -55826,7 +55826,7 @@
             "  Set archive to request.account.dial_archive.snapshot(...).",
             "  Set content to dials_csv_bytes_for(...).",
             "  Call request.send_bytes(...).",
-            "On <ast.Name object at 0x00000242BC2BABD0>:",
+            "On <ast.Name object at 0x000001E0F8F65D10>:",
             "  Call request.report_storage_error(...)."
           ],
           "calls": [
@@ -55845,10 +55845,10 @@
             "Try:",
             "  Set result to request.account.dial_archive.import_csv_bytes(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC2811D0>:",
+            "On <ast.Name object at 0x000001E0F8E39FD0>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC271190>:",
+            "On <ast.Name object at 0x000001E0F8FA7C90>:",
             "  Call request.report_storage_error(...)."
           ],
           "calls": [
@@ -55869,10 +55869,10 @@
             "Try:",
             "  Set saved to snapshot_active_dials(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC12F650>:",
+            "On <ast.Name object at 0x000001E0F8FA5090>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC12B390>:",
+            "On <ast.Name object at 0x000001E0F8FA4790>:",
             "  Call request.report_storage_error(...)."
           ],
           "calls": [
@@ -56606,7 +56606,7 @@
             "      Set data to json.loads(...).",
             "      If isinstance(...):",
             "        Set self.data to data.",
-            "    On <ast.Tuple object at 0x00000242BC309F90>:",
+            "    On <ast.Tuple object at 0x000001E0F8FA67D0>:",
             "      No-op."
           ],
           "calls": [
@@ -56816,7 +56816,7 @@
           "pseudocode": [
             "Try:",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC2B1F10>:",
+            "On <ast.Name object at 0x000001E0F8F0FF10>:",
             "  Call request.report_storage_error(...)."
           ],
           "calls": [
@@ -57200,7 +57200,7 @@
             "  Set now to datetime.now(...).",
             "Try:",
             "  Set seen to datetime.fromisoformat(...).",
-            "On <ast.Name object at 0x00000242BC1DC950>:",
+            "On <ast.Name object at 0x000001E0F8F6FB50>:",
             "  Return False."
           ],
           "calls": [
@@ -57528,7 +57528,7 @@
           "pseudocode": [
             "Try:",
             "  Set moment to datetime.fromisoformat(...).",
-            "On <ast.Name object at 0x00000242BC166D10>:",
+            "On <ast.Name object at 0x000001E0F9032B90>:",
             "  Return None.",
             "If moment.tzinfo compared to ...:",
             "  Set moment to moment.replace(...).",
@@ -57547,7 +57547,7 @@
           "pseudocode": [
             "Try:",
             "  Return ZoneInfo(...).",
-            "On <ast.Tuple object at 0x00000242BC167790>:",
+            "On <ast.Tuple object at 0x000001E0F8F5BB10>:",
             "  Return timezone.utc."
           ],
           "calls": [
@@ -59017,7 +59017,7 @@
             "Call request.account.dialer.maintain_crm(...).",
             "Try:",
             "  Set state to request.ctx.state(...).",
-            "On <ast.Name object at 0x00000242BC3C3B90>:",
+            "On <ast.Name object at 0x000001E0F9072C90>:",
             "  Call request.ctx.log(...).",
             "  Set state to a dict.",
             "Call request.send_json(...)."
@@ -59039,7 +59039,7 @@
             "Try:",
             "  Set content to request.account.crm.csv_bytes(...).",
             "  Call request.send_bytes(...).",
-            "On <ast.Name object at 0x00000242BC3C9DD0>:",
+            "On <ast.Name object at 0x000001E0F9078ED0>:",
             "  Call request.report_storage_error(...)."
           ],
           "calls": [
@@ -59667,7 +59667,7 @@
             "Set row_id to str(...).",
             "Try:",
             "  Set rows to client.request(...).",
-            "On <ast.Name object at 0x00000242BC270E10>:",
+            "On <ast.Name object at 0x000001E0F8F6F410>:",
             "  If a boolean condition:",
             "    Return a dict.",
             "  Raise an error.",
@@ -59972,7 +59972,7 @@
             "Call org.assert_can_view_member(...).",
             "Try:",
             "  Set days to max(...).",
-            "On <ast.Tuple object at 0x00000242BC2A8750>:",
+            "On <ast.Tuple object at 0x000001E0F8E86750>:",
             "  Set days to 7.",
             "Set metrics to SupabaseMetricsStore(...)."
           ],
@@ -60041,10 +60041,10 @@
           "pseudocode": [
             "Try:",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC13F3D0>:",
+            "On <ast.Name object at 0x000001E0F8E82F10>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC2D8150>:",
+            "On <ast.Name object at 0x000001E0F8E25E10>:",
             "  Call request.report_storage_error(...)."
           ],
           "calls": [
@@ -60065,10 +60065,10 @@
             "Set days to a boolean condition[...].",
             "Try:",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC188590>:",
+            "On <ast.Name object at 0x000001E0F8E58D90>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC36D250>:"
+            "On <ast.Name object at 0x000001E0F8F8DA50>:"
           ],
           "calls": [
             "urllib.parse.parse.parse_qs",
@@ -60092,10 +60092,10 @@
           "pseudocode": [
             "Try:",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC36E150>:",
+            "On <ast.Name object at 0x000001E0F8E6CB10>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...).",
-            "On <ast.Name object at 0x00000242BC36C410>:",
+            "On <ast.Name object at 0x000001E0F8E6D810>:",
             "  Set request._trace_error to str(...).",
             "  Call request.send_json(...)."
           ],
@@ -60759,11 +60759,11 @@
             "Set rel to rel_posix(...).",
             "Try:",
             "  Set source to path.read_text(...).",
-            "On <ast.Name object at 0x00000242BC1C21D0>:",
+            "On <ast.Name object at 0x000001E0F8F2BFD0>:",
             "  Return None.",
             "Try:",
             "  Set tree to ast.parse(...).",
-            "On <ast.Name object at 0x00000242BC1DE250>:"
+            "On <ast.Name object at 0x000001E0F8FA5010>:"
           ],
           "calls": [
             "scripts.build_codemap.rel_posix",
@@ -60812,7 +60812,7 @@
             "Set rel to rel_posix(...).",
             "Try:",
             "  Set text to path.read_text(...).",
-            "On <ast.Name object at 0x00000242BC3B64D0>:",
+            "On <ast.Name object at 0x000001E0F9053E90>:",
             "  Set text to ''.",
             "Set rec to FileRecord(...).",
             "Set m to re.search(...).",
@@ -61456,7 +61456,7 @@
           "pseudocode": [
             "Try:",
             "  Return str(...).",
-            "On <ast.Name object at 0x00000242BC216B10>:",
+            "On <ast.Name object at 0x000001E0F8FD91D0>:",
             "  Raise an error."
           ],
           "calls": [

@@ -253,7 +253,7 @@
 -       Set self.records to IfExp.
 -     Else:
 -       Set self.records to a list.
--   On <ast.Tuple object at 0x00000242BC17D6D0>:
+-   On <ast.Tuple object at 0x000001E0F8E87DD0>:
 
 **Calls →**
 1. `features._prospects.dial_archive.LocalDialArchiveStore.path.is_file`

@@ -196,7 +196,7 @@
 -   Set now to datetime.now(...).
 - Try:
 -   Set seen to datetime.fromisoformat(...).
-- On <ast.Name object at 0x00000242BC1DC950>:
+- On <ast.Name object at 0x000001E0F8F6FB50>:
 -   Return False.
 
 **Calls →**

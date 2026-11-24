@@ -256,7 +256,7 @@ _Save only the daily goal keys. A weekly step counts from an anchor date: today,
 - Set row_id to str(...).
 - Try:
 -   Set rows to client.request(...).
-- On <ast.Name object at 0x00000242BC270E10>:
+- On <ast.Name object at 0x000001E0F8F6F410>:
 -   If a boolean condition:
 -     Return a dict.
 -   Raise an error.
