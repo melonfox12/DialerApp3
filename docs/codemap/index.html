@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DialerApp2 code map</title>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #171a22;
+      --ink: #e8eaed;
+      --muted: #9aa0a6;
+      --border: #2a2f3a;
+      --entry: #8ab4f8;
+      --browser: #81c995;
+      --http: #f28b82;
+      --features: #fdd663;
+      --shared: #c58af9;
+      --scripts: #78d9ec;
+      --external: #9aa0a6;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--ink); height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    header { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--panel); }
+    header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  #search { flex: 1; min-width: 160px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); }
+    .toggles { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+    .toggles label { display: flex; gap: 4px; align-items: center; cursor: pointer; }
+    main { display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
+    #cy { min-height: 0; border-right: 1px solid var(--border); background: var(--bg); }
+    aside { overflow: auto; padding: 12px 14px; background: var(--panel); }
+    aside h2 { margin: 0 0 8px; font-size: 15px; word-break: break-all; }
+    aside .meta { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+    aside pre, aside code { font-family: ui-monospace, monospace; font-size: 12px; }
+    aside ul { margin: 6px 0; padding-left: 18px; }
+    aside section { margin-bottom: 16px; }
+    aside h3 { margin: 0 0 6px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 4px; background: var(--border); }
+    .error { color: #f28b82; }
+    button#focusBtn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); cursor: pointer; font-size: 12px; }
+    button#focusBtn[aria-pressed="true"] { background: #394457; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { max-height: 40vh; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Code map</h1>
+    <input id="search" type="search" placeholder="Search files, functions, /api paths…" />
+    <button id="focusBtn" type="button" aria-pressed="false">Focus (1 hop)</button>
+    <div class="toggles" id="edgeToggles"></div>
+  </header>
+  <main>
+    <div id="cy"></div>
+    <aside id="panel">
+      <p class="meta">Select a node in the graph. Regenerate with <code>python scripts/build_codemap.py</code>.</p>
+    </aside>
+  </main>
+  <script>
+    const LAYER_COLOR = {
+      entry: "#8ab4f8", browser: "#81c995", http: "#f28b82", features: "#fdd663",
+      shared: "#c58af9", scripts: "#78d9ec", external: "#9aa0a6", other: "#9aa0a6",
+    };
+    const EDGE_TYPES = ["import", "call", "route", "http", "event", "contains"];
+    let graph = null;
+    let pseudo = null;
+    let cy = null;
+    let focusMode = false;
+    let fullElements = null;
+    const enabledEdges = new Set(EDGE_TYPES);
+
+    async function load() {
+      const [g, p] = await Promise.all([
+        fetch("graph.json").then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); }),
+        fetch("pseudocode.json").then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); }),
+      ]);
+      graph = g;
+      pseudo = p;
+      buildToggles();
+      renderGraph();
+      document.getElementById("search").addEventListener("input", onSearch);
+      document.getElementById("focusBtn").addEventListener("click", () => {
+        focusMode = !focusMode;
+        const btn = document.getElementById("focusBtn");
+        btn.setAttribute("aria-pressed", String(focusMode));
+        btn.textContent = focusMode ? "Focus on" : "Focus (1 hop)";
+        if (cy && cy.$(":selected").length) applyFocus(cy.$(":selected")[0].data("id"));
+      });
+    }
+
+    function buildToggles() {
+      const root = document.getElementById("edgeToggles");
+      EDGE_TYPES.forEach((t) => {
+        const label = document.createElement("label");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = true;
+        cb.dataset.type = t;
+        cb.addEventListener("change", () => {
+          if (cb.checked) enabledEdges.add(t); else enabledEdges.delete(t);
+          renderGraph();
+        });
+        label.append(cb, document.createTextNode(t));
+        root.append(label);
+      });
+    }
+
+    function fileNodesOnly() {
+      return graph.nodes.filter((n) => n.type === "file" || n.type === "external");
+    }
+
+    function edgesForView() {
+      const fileIds = new Set(fileNodesOnly().map((n) => n.id));
+      const out = [];
+      for (const e of graph.edges) {
+        if (!enabledEdges.has(e.type)) continue;
+        if (e.type === "call" || e.type === "contains") continue;
+        const from = e.from.startsWith("file:") || e.from.startsWith("external:") ? e.from : null;
+        const to = e.to.startsWith("file:") || e.to.startsWith("external:") ? e.to : null;
+        if (from && to && fileIds.has(from) && fileIds.has(to)) out.push(e);
+        else if (e.type === "http" && e.from.startsWith("file:") && e.to.startsWith("http:")) {
+          const route = graph.edges.find((r) => r.type === "route" && r.from === e.to);
+          if (route && pseudo) {
+            const handler = route.to;
+            const file = handler.replace(/^fn:([^:]+):.*/, "$1");
+            if (fileIds.has("file:" + file) || file) {
+              out.push({ ...e, to: "file:" + file, type: "http", detail: e.to });
+            }
+          }
+        }
+      }
+      return out;
+    }
+
+    function renderGraph() {
+      const nodes = fileNodesOnly();
+      const edges = edgesForView();
+      const elements = [];
+      const labelById = {};
+      nodes.forEach((n) => {
+        const short = n.id.replace(/^file:/, "").split("/").pop();
+        labelById[n.id] = short || n.id;
+        elements.push({
+          data: {
+            id: n.id,
+            label: short || n.id,
+            layer: n.layer || "other",
+            full: n.id.replace(/^file:/, ""),
+          },
+        });
+      });
+      edges.forEach((e, i) => {
+        elements.push({
+          data: {
+            id: `e${i}`,
+            source: e.from,
+            target: e.to,
+            type: e.type,
+            label: e.detail || e.type,
+          },
+        });
+      });
+      fullElements = elements;
+      if (!cy) {
+        cy = cytoscape({
+          container: document.getElementById("cy"),
+          elements,
+          style: [
+            { selector: "node", style: {
+              label: "data(label)",
+              "font-size": "10px",
+              color: "#e8eaed",
+              "text-valign": "bottom",
+              "text-margin-y": 6,
+              width: 28,
+              height: 28,
+              "background-color": (ele) => LAYER_COLOR[ele.data("layer")] || "#888",
+            }},
+            { selector: "edge", style: {
+              width: 1.5,
+              "line-color": "#5f6368",
+              "target-arrow-color": "#5f6368",
+              "target-arrow-shape": "triangle",
+              "curve-style": "bezier",
+              label: "data(label)",
+              "font-size": 8,
+              color: "#9aa0a6",
+              "text-rotation": "autorotate",
+            }},
+            { selector: ":selected", style: { "border-width": 3, "border-color": "#fff" } },
+          ],
+          layout: { name: "cose", animate: false, padding: 30 },
+        });
+        cy.on("tap", "node", (evt) => showPanel(evt.target));
+        cy.on("tap", (evt) => { if (evt.target === cy) document.getElementById("panel").innerHTML = "<p class=\"meta\">Select a node.</p>"; });
+      } else {
+        cy.json({ elements });
+        cy.layout({ name: "cose", animate: false, padding: 30 }).run();
+      }
+    }
+
+    function applyFocus(centerId) {
+      if (!focusMode || !fullElements) return;
+      const adj = new Set([centerId]);
+      graph.edges.forEach((e) => {
+        if (!enabledEdges.has(e.type)) return;
+        if (e.from === centerId) adj.add(e.to.startsWith("file:") ? e.to : null);
+        if (e.to === centerId) adj.add(e.from.startsWith("file:") ? e.from : null);
+        if (e.from === centerId && e.to.startsWith("fn:")) {
+          const f = "file:" + e.to.replace(/^fn:([^:]+):.*/, "$1");
+          adj.add(f);
+        }
+      });
+      adj.delete(null);
+      const hop2 = new Set(adj);
+      graph.edges.forEach((e) => {
+        if (adj.has(e.from) && e.to.startsWith("file:")) hop2.add(e.to);
+        if (adj.has(e.to) && e.from.startsWith("file:")) hop2.add(e.from);
+      });
+      const filtered = fullElements.filter((el) => {
+        if (!el.data.source) return hop2.has(el.data.id);
+        return hop2.has(el.data.source) && hop2.has(el.data.target);
+      });
+      cy.json({ elements: filtered });
+      cy.layout({ name: "cose", animate: false }).run();
+    }
+
+    function showPanel(node) {
+      const id = node.data("id");
+      const rel = node.data("full");
+      const panel = document.getElementById("panel");
+      if (!rel) {
+        panel.innerHTML = `<h2>${id}</h2><p class="meta">External dependency bucket.</p>`;
+        return;
+      }
+      const file = pseudo[rel];
+      const outCalls = graph.edges.filter((e) => e.from === id && e.type === "import");
+      const inCalls = graph.edges.filter((e) => e.to === id && e.type === "import");
+      const httpOut = graph.edges.filter((e) => e.from === id && e.type === "http");
+      let html = `<h2><span class="badge">${node.data("layer")}</span>${rel}</h2>`;
+      html += `<p class="meta">${file?.purpose || ""}</p>`;
+      if (outCalls.length) {
+        html += "<section><h3>Imports →</h3><ul>";
+        outCalls.forEach((e) => html += `<li><code>${e.to.replace(/^file:/, "")}</code></li>`);
+        html += "</ul></section>";
+      }
+      if (inCalls.length) {
+        html += "<section><h3>Imported by ←</h3><ul>";
+        inCalls.forEach((e) => html += `<li><code>${e.from.replace(/^file:/, "")}</code></li>`);
+        html += "</ul></section>";
+      }
+      if (httpOut.length) {
+        html += "<section><h3>HTTP API calls</h3><ul>";
+        httpOut.forEach((e) => {
+          const route = graph.routes?.find((r) => r.path === e.to.replace(/^http:/, ""));
+          const h = route ? route.handler_id : e.to;
+          html += `<li><code>${e.to.replace(/^http:/, "")}</code> → ${h}</li>`;
+        });
+        html += "</ul></section>";
+      }
+      if (file?.events?.length) {
+        html += "<section><h3>DOM events</h3><ul>";
+        file.events.slice(0, 20).forEach((ev) => {
+          html += `<li>#${ev.element_id || ev.handler || "?"} · ${ev.event}</li>`;
+        });
+        html += "</ul></section>";
+      }
+      if (file?.functions && Object.keys(file.functions).length) {
+        html += "<section><h3>Functions</h3>";
+        const fns = Object.entries(file.functions).sort((a, b) => a[1].line - b[1].line);
+        fns.slice(0, 12).forEach(([qual, fn]) => {
+          html += `<p><strong>${fn.name}</strong> <span class="meta">L${fn.line}</span></p>`;
+          if (fn.pseudocode?.length) {
+            html += "<ul>";
+            fn.pseudocode.forEach((line) => { html += `<li>${line}</li>`; });
+            html += "</ul>";
+          }
+        });
+        if (fns.length > 12) html += `<p class="meta">+ ${fns.length - 12} more — see files/${rel}.md</p>`;
+        html += "</section>";
+      }
+      html += `<p class="meta"><a href="files/${rel}.md" style="color:#8ab4f8">Full pseudocode markdown</a></p>`;
+      panel.innerHTML = html;
+      if (focusMode) applyFocus(id);
+    }
+
+    function onSearch(ev) {
+      const q = ev.target.value.trim().toLowerCase();
+      if (!cy) return;
+      cy.nodes().removeClass("searched");
+      if (!q) return;
+      cy.nodes().forEach((n) => {
+        const full = (n.data("full") || n.data("id") || "").toLowerCase();
+        if (full.includes(q)) n.addClass("searched");
+      });
+      cy.style().selector(".searched").style({ "border-width": 4, "border-color": "#fdd663" }).update();
+      const hit = cy.nodes().filter((n) => (n.data("full") || "").toLowerCase().includes(q));
+      if (hit.length === 1) {
+        cy.center(hit[0]);
+        hit[0].select();
+        showPanel(hit[0]);
+      }
+    }
+
+    load().catch((err) => {
+      document.getElementById("panel").innerHTML = `<p class="error">Could not load graph: ${err.message}. Serve from repo root: python -m http.server 8001 then open /docs/codemap/</p>`;
+    });
+  </script>
+</body>
+</html>
