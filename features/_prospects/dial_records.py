@@ -161,43 +161,57 @@ class SupabaseDialRecordsStore:
     def _touch(self):
         self.revision += 1
 
-    def _blob_lead(self, saved):
-        return {
-            "id": DIAL_RECORDS_BLOB_ID,
-            "name": "",
-            "phone": "",
-            "business": "",
-            "status": "new",
-            "timezone": "",
-            "dial_saved_records": [dict(item) for item in saved],
-        }
+    def _table_missing(self, exc):
+        message = str(exc).lower()
+        return (
+            "dial_records_snapshots" in message
+            and ("404" in message or "does not exist" in message or "pgrst205" in message)
+        )
 
     def _fetch(self):
+        if not self.user_id:
+            return []
         rows = self.client.request(
             "GET",
-            "prospects",
-            self._scope({"id": f"eq.{DIAL_RECORDS_BLOB_ID}", "select": "data"}),
-        )
+            "dial_records_snapshots",
+            {"user_id": f"eq.{self.user_id}", "select": "saved", "limit": "1"},
+        ) or []
         if not rows:
             return []
-        data = rows[0].get("data") if isinstance(rows[0], dict) else {}
-        stored = data.get("dial_saved_records") if isinstance(data, dict) else []
+        stored = rows[0].get("saved") if isinstance(rows[0], dict) else []
         return [dict(item) for item in stored] if isinstance(stored, list) else []
 
     def _all(self):
         if self._cache is None:
-            self._cache = self._fetch()
+            try:
+                self._cache = self._fetch()
+            except OSError as exc:
+                if self._table_missing(exc):
+                    self._cache = []
+                else:
+                    raise
         return self._cache
 
     def _save(self, saved):
-        payload = self._blob_lead(saved)
-        self.client.request(
-            "POST",
-            "prospects",
-            {"on_conflict": "id"},
-            [{"id": DIAL_RECORDS_BLOB_ID, "user_id": self.user_id, "data": payload}],
-            "resolution=merge-duplicates,return=minimal",
-        )
+        if not self.user_id:
+            raise ValueError("Sign in to save dial records.")
+        body = {"user_id": self.user_id, "saved": [dict(item) for item in saved]}
+        try:
+            self.client.request(
+                "POST",
+                "dial_records_snapshots",
+                {"on_conflict": "user_id"},
+                body,
+                "resolution=merge-duplicates,return=minimal",
+            )
+        except OSError as exc:
+            if self._table_missing(exc):
+                raise OSError(
+                    "The dial_records_snapshots table is missing in Supabase. "
+                    "Run docs/supabase/migrations/202611232300_dial_records_snapshots.sql "
+                    "in the SQL editor, then restart the server."
+                ) from exc
+            raise
 
     def list_summaries(self):
         with self.lock:

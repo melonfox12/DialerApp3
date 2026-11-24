@@ -53,9 +53,9 @@ def load_membership(client, user_id):
     with _membership_lock:
         _membership_cache[key] = (now + _MEMBERSHIP_TTL, dict(cached))
         if len(_membership_cache) > 128:
-            _membership_cache = {
-                item_key: item for item_key, item in _membership_cache.items() if item[0] > now
-            }
+            for item_key in list(_membership_cache):
+                if _membership_cache[item_key][0] <= now:
+                    del _membership_cache[item_key]
     return cached
 
 

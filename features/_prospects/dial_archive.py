@@ -286,8 +286,12 @@ class SupabaseDialArchiveStore:
         except OSError as exc:
             if not self._table_missing(exc):
                 raise
-            self._use_blob = True
-            return self._fetch_blob()
+            raise OSError(
+                "The dial_archive table is missing in Supabase. "
+                "Run docs/supabase/schema.sql or "
+                "docs/supabase/migrations/202611231800_restore_dial_archive_and_increment_metric.sql "
+                "in the SQL editor, then restart the server."
+            ) from exc
 
     def _save_blob(self, records):
         payload = self._blob_lead(records)
