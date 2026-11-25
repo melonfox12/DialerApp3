@@ -4,7 +4,7 @@ from features._dialer import calls, voice_session
 from features._dialer.rules import clear_stale_active, dialer_stage, new_session, recent_streak
 from features import ai_agents, ai_voice_runtime
 from shared.dial_policy import global_dialer_pool, leads_for_timezone_counts, resolve_pool_status, unique_business_types
-from shared.vocabulary import resolve_caller_id_group
+from features._dialer.caller_id_queue import public_queue_view, sync_dialer_caller_pool
 from shared.infra import utc_now
 from shared.prospect_schema import display_name
 
@@ -89,7 +89,6 @@ def public_state(state, include_leads=False):
             }
             for call in prospect_calls
         ]
-        callers = list(state.callers)
         view = {
             "running": state.running,
             "paused": state.paused,
@@ -99,7 +98,6 @@ def public_state(state, include_leads=False):
             "active_lead_id": active_id,
             "pending_outcome_id": pending_id,
             "in_flight": records,
-            "caller_ids": callers,
             "current_caller_id": (current_call or {}).get("caller_id") or "",
             "pickup_answered_by": (active_call or {}).get("answered_by") or "",
             "last_error": state.last_error,
@@ -122,6 +120,8 @@ def public_state(state, include_leads=False):
                 "connected_at": state.taggable_call.get("connected_at"),
             } if state.taggable_call else None,
         }
+    callers = sync_dialer_caller_pool(state)
+    view["caller_ids"] = callers
     by_id = {lead["id"]: lead for lead in leads}
     view["active_lead"] = by_id.get(active_id)
     view["pending_outcome"] = by_id.get(pending_id)
@@ -135,7 +135,7 @@ def public_state(state, include_leads=False):
     view["selected_timezone"] = state.selected_timezone
     view["selected_business_type"] = getattr(state, "selected_business_type", None) or ""
     view["dial_pool_status"] = resolve_pool_status(getattr(state, "dial_pool_status", None))
-    view["caller_id_group"] = resolve_caller_id_group(getattr(state, "caller_id_group", None))
+    view["caller_id_queue"] = public_queue_view(state)
     view["pool"] = catalog["pool"]
     view["global_dialer_pool"] = catalog.get("global_dialer_pool") or []
     view["global_dialer_pool_count"] = len(view["global_dialer_pool"])

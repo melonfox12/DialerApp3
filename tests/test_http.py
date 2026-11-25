@@ -144,6 +144,14 @@ class HttpContractTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assert_keys(payload, SETTINGS_KEYS)
 
+        status, payload, _type = self.json_request("GET", "/api/call-script")
+        self.assertEqual(status, 200)
+        self.assertIn("industry", payload)
+        self.assertIn("prospect_type", payload)
+        self.assertIn("variation", payload)
+        self.assertIn("variations", payload)
+        self.assertIn("body", payload)
+
         status, payload, _type = self.json_request("GET", "/api/voice-token")
         self.assertEqual(status, 400)
         self.assert_keys(payload, ("error",))
@@ -218,51 +226,13 @@ class HttpContractTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assert_keys(payload, STATE_KEYS)
         self.assertEqual(payload["selected_timezone"], "Eastern")
-        self.assertEqual(payload["caller_id_group"], "eastern")
-        self.assertEqual(
-            payload["caller_ids"],
-            ["+18607354163", "+18607521887", "+18607824999"],
-        )
+        self.assertIn("caller_id_queue", payload)
+        self.assertGreaterEqual(len(payload["caller_ids"]), 12)
 
         status, payload, _type = self.json_request("POST", "/api/timezone", {"timezone": "Pacific"})
         self.assertEqual(status, 200)
         self.assertEqual(payload["selected_timezone"], "Pacific")
-        self.assertEqual(payload["caller_id_group"], "eastern")
-        self.assertEqual(
-            payload["caller_ids"],
-            ["+18607354163", "+18607521887", "+18607824999"],
-        )
-
-        status, payload, _type = self.json_request("POST", "/api/caller-id-group", {"caller_id_group": "pacific"})
-        self.assertEqual(status, 200)
-        self.assert_keys(payload, STATE_KEYS)
-        self.assertEqual(payload["selected_timezone"], "Pacific")
-        self.assertEqual(payload["caller_id_group"], "pacific")
-        self.assertEqual(
-            payload["caller_ids"],
-            ["+12136953093", "+12139533359", "+12137204625"],
-        )
-
-        status, payload, _type = self.json_request("POST", "/api/timezone", {"timezone": "Central"})
-        self.assertEqual(status, 200)
-        self.assertEqual(payload["selected_timezone"], "Central")
-        self.assertEqual(payload["caller_id_group"], "pacific")
-        self.assertEqual(
-            payload["caller_ids"],
-            ["+12136953093", "+12139533359", "+12137204625"],
-        )
-
-        status, payload, _type = self.json_request("POST", "/api/caller-id-group", {"caller_id_group": "central"})
-        self.assertEqual(status, 200)
-        self.assertEqual(payload["caller_id_group"], "central")
-        self.assertEqual(
-            payload["caller_ids"],
-            ["+19206545904", "+19207827371", "+19205668506"],
-        )
-
-        status, payload, _type = self.json_request("POST", "/api/caller-id-group", {"caller_id_group": "bogus"})
-        self.assertEqual(status, 400)
-        self.assert_keys(payload, ("error",))
+        self.assertGreaterEqual(len(payload["caller_ids"]), 12)
 
         status, payload, _type = self.json_request("POST", "/api/start", {})
         self.assertEqual(status, 400)
@@ -490,8 +460,9 @@ EXPECTED_ROUTES = {
     ("GET", "/api/leads"),
     ("GET", "/api/live"),
     ("GET", "/api/voice-token"),
+    ("GET", "/api/call-script"),
+    ("POST", "/api/call-script"),
     ("POST", "/api/timezone"),
-    ("POST", "/api/caller-id-group"),
     ("POST", "/api/start"),
     ("POST", "/api/pause"),
     ("POST", "/api/stop"),

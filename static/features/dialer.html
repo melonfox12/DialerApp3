@@ -14,7 +14,7 @@
                   <span class="live-indicator"><i></i><span id="liveLabel">Standby</span></span>
                   <span id="lineCount" class="line-count">0 of 0 dialed</span>
                   <div id="callerIdLine" class="caller-id-line" hidden>Caller ID <span></span></div>
-                  <div class="dialer-pool-filter"><select id="dialerPoolStatusFilter" class="dialer-pool-status-select" aria-label="Dial prospects with CRM status"></select><select id="dialerBusinessTypeFilter" class="dialer-business-type-select" aria-label="Dial prospects by industry"></select><select id="dialerCallerIdGroup" class="dialer-caller-id-select" aria-label="Caller ID numbers"></select><span class="visually-hidden" id="dialerTimezoneLabel">Dial from</span><select id="dialerTimezoneFilter" aria-labelledby="dialerTimezoneLabel" aria-hidden="true" tabindex="-1"><option value="">All time zones</option></select><div class="timezone-menu"><button id="dialerTimezoneButton" class="timezone-menu-button" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="dialerTimezoneList">All time zones</button><ul id="dialerTimezoneList" class="timezone-menu-list" role="listbox" aria-labelledby="dialerTimezoneLabel" hidden></ul></div></div>
+                  <div class="dialer-pool-filter"><select id="dialerPoolStatusFilter" class="dialer-pool-status-select" aria-label="Dial prospects with CRM status"></select><select id="dialerBusinessTypeFilter" class="dialer-business-type-select" aria-label="Dial prospects by industry"></select><div class="caller-id-queue-menu" id="dialerCallerIdQueueMenu"><button id="dialerCallerIdQueueButton" class="caller-id-queue-button" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="dialerCallerIdQueuePanel" aria-label="Caller ID queue"><span id="dialerCallerIdQueueSummary" class="caller-id-queue-summary">Caller IDs</span></button><div id="dialerCallerIdQueuePanel" class="caller-id-queue-panel" role="dialog" aria-labelledby="dialerCallerIdQueueButton" hidden><ul id="dialerCallerIdQueueList" class="caller-id-queue-list"></ul></div></div></div>
                 </div>
 
                 <section class="queue-strip" aria-label="Call queue">
@@ -39,7 +39,7 @@
 
                 <section class="crm-status" aria-labelledby="crmStatusLabel">
                   <div class="outcome-label" id="crmStatusLabel">CRM status <span id="crmStatusTarget"></span></div>
-                  <div id="crmStatusButtons" class="outcome-buttons" role="group" aria-label="CRM status"></div>
+                  <div id="crmStatusButtons" class="outcome-buttons crm-outcome-buttons" role="group" aria-label="CRM status"></div>
                 </section>
 
                 <section id="callStage" class="call-stage" data-stage="idle" aria-live="off" tabindex="0" aria-label="Call stage"></section>
@@ -93,29 +93,35 @@
               </details>
               </div>
               </div>
-              <aside id="prospectNotesShell" class="prospect-notes-shell" aria-label="Notes sidebar">
-                <button id="prospectNotesExpandTab" class="prospect-notes-expand-tab" type="button" hidden aria-label="Show notes panel">Notes</button>
-                <div id="prospectNotesResizeHandle" class="prospect-notes-resize-handle" role="separator" aria-orientation="vertical" aria-label="Drag to resize notes panel" tabindex="0"></div>
+              <aside id="prospectNotesShell" class="prospect-notes-shell" aria-label="Call script sidebar">
+                <button id="prospectNotesExpandTab" class="prospect-notes-expand-tab" type="button" hidden aria-label="Show script panel">Script</button>
+                <div id="prospectNotesResizeHandle" class="prospect-notes-resize-handle" role="separator" aria-orientation="vertical" aria-label="Drag to resize script panel" tabindex="0"></div>
                 <div class="prospect-notes-inner">
                   <div class="prospect-notes-shell-head">
-                    <span class="prospect-notes-shell-label">Notes</span>
-                    <button id="prospectNotesCollapse" class="prospect-notes-collapse" type="button" aria-expanded="true" aria-controls="prospectNotesPanel" aria-label="Collapse notes panel" title="Collapse notes panel">›</button>
+                    <span class="prospect-notes-shell-label">Script</span>
+                    <button id="prospectNotesCollapse" class="prospect-notes-collapse" type="button" aria-expanded="true" aria-controls="callScriptPanel" aria-label="Collapse script panel" title="Collapse script panel">›</button>
                   </div>
-              <div id="prospectNotesPanel" class="prospect-notes-panel">
-                <section class="prospect-notes-active" aria-labelledby="prospectNotesTitle">
-                  <div class="prospect-notes-panel-head">
-                    <h3 id="prospectNotesTitle">Notes</h3>
-                    <span id="prospectNotesSaveState" class="prospect-notes-save-state" aria-live="polite"></span>
+              <div id="callScriptPanel" class="prospect-notes-panel call-script-panel">
+                <section class="call-script-panel-body" aria-labelledby="callScriptTitle">
+                  <div class="prospect-notes-panel-head call-script-panel-head">
+                    <h3 id="callScriptTitle">Script</h3>
+                    <span id="callScriptSaveState" class="prospect-notes-save-state" aria-live="polite"></span>
                   </div>
-                  <p id="prospectNotesTarget" class="prospect-notes-target">No prospect on the line</p>
-                  <textarea id="prospectNotesEditor" class="prospect-notes-editor" rows="10" placeholder="Notes for the active prospect…"></textarea>
-                </section>
-                <section class="send-info-tracker" aria-labelledby="sendInfoNotesTitle">
-                  <div class="send-info-tracker-head">
-                    <h3 id="sendInfoNotesTitle">Send info</h3>
-                    <span id="sendInfoProspectsCount" class="send-info-prospects-count" aria-live="polite"></span>
+                  <div class="call-script-filters">
+                    <label class="call-script-filter">
+                      <span class="call-script-filter-label">Industry</span>
+                      <select id="callScriptIndustry" class="call-script-select" aria-label="Industry"></select>
+                    </label>
+                    <label class="call-script-filter">
+                      <span class="call-script-filter-label">Prospect type</span>
+                      <select id="callScriptProspectType" class="call-script-select" aria-label="Prospect type"></select>
+                    </label>
+                    <label class="call-script-filter">
+                      <span class="call-script-filter-label">Variation</span>
+                      <select id="callScriptVariation" class="call-script-select" aria-label="Script variation"></select>
+                    </label>
                   </div>
-                  <div id="sendInfoProspectsList" class="send-info-prospects-list" role="list"></div>
+                  <textarea id="callScriptEditor" class="call-script-editor" rows="14" placeholder="Type your script here…" spellcheck="true"></textarea>
                 </section>
               </div>
                 </div>

@@ -6,16 +6,31 @@ import { errorText, showToast } from "../../_core/notify.js";
 import { render } from "../../core.js";
 import { nextProspectLabel, queueProspect } from "./queue.js";
 
-const DIALER_STATUSES = [
-  { status: "dialed", label: "Dialed (callback)", className: "outcome-btn outcome-btn-call" },
-  { status: "contact_engaged", label: "Contact (engaged)", className: "outcome-btn outcome-btn-send-info" },
-  { status: "qualified", label: "Qualified", className: "outcome-btn outcome-btn-send-info" },
-  { status: "booked", label: "Booked", className: "outcome-btn outcome-btn-booked" },
-  { status: "proposal_sent", label: "Proposal sent", className: "outcome-btn outcome-btn-booked" },
-  { status: "closed", label: "Closed", className: "outcome-btn outcome-btn-disqualified" },
+const PRIMARY_OUTCOMES = [
+  // dialed status keeps the 2-hour callback timer and pool re-queue behavior.
+  { status: "dialed", label: "Engaged", className: "outcome-btn outcome-btn-engaged" },
+  { status: "closed", label: "Disqualified", className: "outcome-btn outcome-btn-disqualified" },
+  { status: "qualified", label: "Qualified", className: "outcome-btn outcome-btn-qualified" },
 ];
 
+const BOOKED_OUTCOME = {
+  status: "booked",
+  label: "Booked",
+  className: "outcome-btn outcome-btn-booked outcome-btn-booked-hero",
+};
+
 let saving = false;
+
+function buildButton(item, lead) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = item.className;
+  button.dataset.status = item.status;
+  button.textContent = item.label;
+  button.disabled = !lead || saving || leavesQueueForGood(lead, item.status);
+  button.setAttribute("aria-pressed", lead?.status === item.status ? "true" : "false");
+  return button;
+}
 
 export function bindCrmStatus() {
   for (const root of dialerEls("crmStatusButtons")) {
@@ -35,19 +50,18 @@ export function bindCrmStatus() {
 export function renderCrmStatus() {
   const lead = queueProspect();
   const label = lead ? nextProspectLabel(lead) : "No prospect in the queue";
-  const buttons = DIALER_STATUSES.map((item) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = item.className;
-    button.dataset.status = item.status;
-    button.textContent = item.label;
-    button.disabled = !lead || saving || leavesQueueForGood(lead, item.status);
-    button.setAttribute("aria-pressed", lead?.status === item.status ? "true" : "false");
-    return button;
-  });
+
+  const primaryRow = document.createElement("div");
+  primaryRow.className = "crm-outcome-buttons-primary";
+  primaryRow.append(...PRIMARY_OUTCOMES.map((item) => buildButton(item, lead)));
+
+  const bookedRow = document.createElement("div");
+  bookedRow.className = "crm-outcome-buttons-booked";
+  bookedRow.append(buildButton(BOOKED_OUTCOME, lead));
+
   for (const target of dialerEls("crmStatusTarget")) target.textContent = label;
   for (const root of dialerEls("crmStatusButtons")) {
-    root.replaceChildren(...buttons.map((button) => document.importNode(button, true)));
+    root.replaceChildren(primaryRow, bookedRow);
   }
 }
 
@@ -58,16 +72,13 @@ async function saveCrmStatus(lead, status, label) {
   try {
     const result = await postJson(`/api/leads/${encodeURIComponent(lead.id)}/status`, {
       status,
-      // Every one of these buttons ends the call and sets the prospect's status everywhere.
       crm_only: true,
     });
     await applyMutationPayload(result);
     if (status === "dialed") showToast(`Callback started for ${name}`);
-    else if (status === "contact_engaged") showToast(`${name}: Contact (engaged)`);
+    else if (status === "closed") showToast(`${name} marked disqualified`);
     else if (status === "qualified") showToast(`${name}: Qualified`);
     else if (status === "booked") showToast(`${name}: Meeting booked!`);
-    else if (status === "proposal_sent") showToast(`${name}: Proposal sent`);
-    else if (status === "closed") showToast(`${name} marked closed`);
     else showToast(`${name}: ${label}`);
   } catch (error) {
     showToast(errorText(error, "Could not update the CRM status."), true);

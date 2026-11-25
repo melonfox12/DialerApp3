@@ -21,7 +21,7 @@ DIALER_STATE_KEYS = (
     "ai_voice_sessions",
     "ai_voice_stream_active",
     "caller_ids",
-    "caller_id_group",
+    "caller_id_queue",
     "counts",
     "current_caller_id",
     "dial_pool_status",

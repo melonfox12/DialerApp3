@@ -68,11 +68,22 @@ def _pool_leads(state, leads=None):
     )
 
 def _next_caller(state):
+    from features._dialer.caller_id_queue import queue_scope_id, sync_dialer_caller_pool
+
+    store = getattr(state, "caller_id_queue_store", None)
+    if store:
+        scope = queue_scope_id(state)
+        try:
+            caller = store.dequeue(scope)
+        except ValueError as exc:
+            raise twilio.TwilioError(str(exc)) from exc
+        sync_dialer_caller_pool(state)
+        return caller
     with state.lock:
         if not state.callers:
             raise twilio.TwilioError("No voice-enabled Twilio numbers are available.")
-        caller = state.callers[state.caller_index % len(state.callers)]
-        state.caller_index += 1
+        caller = state.callers[state._local_caller_index % len(state.callers)]
+        state._local_caller_index += 1
         return caller
 
 def _launch_call(state, call, destination):

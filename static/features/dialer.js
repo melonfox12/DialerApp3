@@ -4,6 +4,7 @@ import { drawProspectWaveform } from "./_dialer/card.js";
 import { stageEffects } from "./_dialer/effects.js";
 import { dialLead } from "./_dialer/lead.js";
 import { bindCallMonitor } from "./_dialer/monitor.js";
+import { renderCallerIdQueueMenu } from "./_dialer/caller-id-queue.js";
 import { renderCallerPool, syncDialFiltersFromState } from "./_dialer/pool-view.js";
 import { renderDials } from "./_dialer/dials.js";
 import { renderDialer } from "./_dialer/render-dialer.js";
@@ -28,6 +29,7 @@ stageEffects.booked = (lead) => {
 setStartNewSession(startDialing);
 registerCallerPool(renderCallerPool);
 registerRenderer(syncDialFiltersFromState, "start", "dialFilters");
+registerRenderer(renderCallerIdQueueMenu, "dialer", "callerIdQueue");
 registerRenderer(renderDialer, "end", "dialer");
 registerRenderer(renderCallerPool, "end", "pool");
 registerRenderer(renderDials, "end", "dials");

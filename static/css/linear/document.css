@@ -265,6 +265,85 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+.call-script-panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+.call-script-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.call-script-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 auto;
+  overflow: visible;
+  z-index: 2;
+}
+.call-script-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.call-script-filter-label {
+  color: #8a8f98;
+  font-size: 11px;
+  font-weight: 510;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.call-script-select {
+  width: 100%;
+  height: 34px;
+  padding: 0 28px 0 10px;
+  border: 1px solid #2c3036;
+  border-radius: 8px;
+  background-color: #16181c;
+  color: #f7f8f8;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  color-scheme: dark;
+  appearance: auto;
+}
+.call-script-select option {
+  background-color: #000000;
+  color: #ffffff;
+}
+.call-script-select:hover,
+.call-script-select:focus {
+  border-color: #5e6ad2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.2);
+}
+.call-script-editor {
+  flex: 1 1 auto;
+  min-height: 220px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #2c3036;
+  border-radius: 8px;
+  background: #0f1114;
+  color: #f2f4f8;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  resize: none;
+  overflow: auto;
+  scrollbar-color: #2c3036 transparent;
+  scrollbar-width: thin;
+}
+.call-script-editor:focus {
+  border-color: #5e6ad2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.25);
+}
 .dialer-document {
   flex: 1 1 auto;
   min-height: 0;
@@ -332,7 +411,7 @@
 }
 .issue-meta .dialer-pool-filter .dialer-pool-status-select,
 .issue-meta .dialer-pool-filter .dialer-business-type-select,
-.issue-meta .dialer-pool-filter .dialer-caller-id-select {
+.issue-meta .dialer-pool-filter .caller-id-queue-button {
   position: static;
   width: auto;
   min-width: 108px;
@@ -353,71 +432,94 @@
 }
 .issue-meta .dialer-pool-filter .dialer-pool-status-select:hover,
 .issue-meta .dialer-pool-filter .dialer-business-type-select:hover,
-.issue-meta .dialer-pool-filter .dialer-caller-id-select:hover {
+.issue-meta .dialer-pool-filter .caller-id-queue-button:hover {
   background: rgba(255, 255, 255, .04);
   color: var(--ink);
 }
-/* Only the native timezone select is hidden; the menu button drives that filter. */
-.issue-meta .dialer-pool-filter #dialerTimezoneFilter {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+.issue-meta .caller-id-queue-menu {
+  position: relative;
+  flex: 0 0 auto;
 }
-.issue-meta .timezone-menu { position: relative; }
-.issue-meta .timezone-menu-button {
+.issue-meta .caller-id-queue-button {
   display: inline-flex;
   align-items: center;
-  height: 28px;
+  justify-content: flex-start;
+  width: auto;
   min-width: 148px;
-  padding: 0 8px;
+  max-width: 200px;
+  height: 28px;
+  margin: 0;
+  padding: 0 22px 0 8px;
   border: 0;
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--muted);
   font: inherit;
   font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
 }
-.issue-meta .timezone-menu-button::after {
+.issue-meta .caller-id-queue-button::after {
   content: "";
+  position: absolute;
+  right: 8px;
   width: 0;
   height: 0;
-  margin-left: 10px;
   border-right: 3.5px solid transparent;
   border-left: 3.5px solid transparent;
   border-top: 4px solid currentColor;
 }
-.issue-meta .timezone-menu-button:hover {
-  background: rgba(255, 255, 255, .04);
-  color: var(--ink);
+.issue-meta .caller-id-queue-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.issue-meta .timezone-menu-list {
+.issue-meta .caller-id-queue-panel {
   position: absolute;
-  z-index: 8;
+  z-index: 12;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 100%;
+  width: min(240px, 70vw);
+  max-height: min(320px, 50vh);
+  overflow: auto;
   margin: 0;
-  padding: 4px;
-  list-style: none;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
+  background: var(--panel);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .35);
 }
-.issue-meta .timezone-menu-option {
+.issue-meta .caller-id-queue-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.issue-meta .caller-id-queue-item {
   padding: 7px 10px;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   font-size: 13px;
   line-height: 1.3;
   white-space: nowrap;
-  cursor: pointer;
 }
-.issue-meta .timezone-menu-option + .timezone-menu-option { margin-top: 4px; }
+.issue-meta .caller-id-queue-item + .caller-id-queue-item {
+  margin-top: 4px;
+}
+.issue-meta .caller-id-queue-in_use {
+  border-color: #b8860b;
+  background: rgba(255, 204, 0, .14);
+  color: #f5d547;
+}
+.issue-meta .caller-id-queue-up_next {
+  border-color: var(--primary);
+  background: rgba(132, 94, 247, .16);
+  color: #c4b5fd;
+}
+.issue-meta .caller-id-queue-waiting {
+  color: var(--ink-secondary);
+}
+.issue-meta .caller-id-queue-menu.is-live .caller-id-queue-button {
+  color: var(--ink);
+}
 
 .dialer-document .queue-strip {
   display: block;

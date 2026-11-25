@@ -63,29 +63,88 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+.dialer-document .crm-outcome-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 480px;
+}
+.dialer-document .crm-outcome-buttons-primary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.dialer-document .crm-outcome-buttons-booked {
+  display: block;
+  width: 100%;
+}
 .dialer-document .outcome-buttons .outcome-btn {
   grid-column: auto;
   width: auto;
   min-height: 32px;
   padding: 0 10px;
-  border-color: #2a2e33;
+  border: 1px solid #2a2e33;
   border-radius: 6px;
   background: transparent;
   color: #d0d6e0;
   font-size: 13px;
   font-weight: 450;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease;
 }
-.dialer-document .outcome-btn-booked,
-.dialer-document .outcome-btn-booked:hover:not(:disabled) {
-  border-color: #2a2e33;
-  background: transparent;
-  color: #d0d6e0;
+.dialer-document .outcome-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
 }
-.dialer-document .outcome-btn-booked:hover:not(:disabled),
-.dialer-document .outcome-btn.outcome-pressed-booked {
-  border-color: rgba(76, 195, 138, .45);
-  background: rgba(76, 195, 138, .12);
+.dialer-document .outcome-btn-engaged {
+  border-color: rgba(245, 213, 71, .35);
+  background: rgba(255, 204, 0, .08);
+  color: #f5d547;
+}
+.dialer-document .outcome-btn-engaged:hover:not(:disabled),
+.dialer-document .outcome-btn-engaged[aria-pressed="true"] {
+  border-color: rgba(245, 213, 71, .55);
+  background: rgba(255, 204, 0, .16);
+  color: #ffe066;
+}
+.dialer-document .outcome-btn-disqualified {
+  border-color: rgba(235, 87, 87, .35);
+  background: rgba(235, 87, 87, .1);
+  color: #f08a8a;
+}
+.dialer-document .outcome-btn-disqualified:hover:not(:disabled),
+.dialer-document .outcome-btn-disqualified[aria-pressed="true"] {
+  border-color: rgba(235, 87, 87, .55);
+  background: rgba(235, 87, 87, .16);
+  color: #ff9b9b;
+}
+.dialer-document .outcome-btn-qualified {
+  border-color: rgba(76, 195, 138, .35);
+  background: rgba(76, 195, 138, .1);
   color: #4cc38a;
+}
+.dialer-document .outcome-btn-qualified:hover:not(:disabled),
+.dialer-document .outcome-btn-qualified[aria-pressed="true"] {
+  border-color: rgba(76, 195, 138, .55);
+  background: rgba(76, 195, 138, .16);
+  color: #6ee7a8;
+}
+.dialer-document .outcome-btn-booked-hero {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  border-color: rgba(132, 94, 247, .4);
+  background: rgba(132, 94, 247, .12);
+  color: #c4b5fd;
+  font-size: 15px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+}
+.dialer-document .outcome-btn-booked-hero:hover:not(:disabled),
+.dialer-document .outcome-btn-booked-hero[aria-pressed="true"] {
+  border-color: rgba(167, 139, 250, .55);
+  background: rgba(132, 94, 247, .22);
+  color: #ddd6fe;
 }
 .dialer-document .callback-picker { font-size: 13px; }
 .dialer-document .callback-picker input { height: 32px; font-size: 13px; }

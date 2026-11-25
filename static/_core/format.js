@@ -100,16 +100,6 @@ export const DIAL_BUSINESS_TYPE_OPTIONS = Array.isArray(vocabulary.dialBusinessT
   && vocabulary.dialBusinessTypeOptions.length
   ? vocabulary.dialBusinessTypeOptions
   : FALLBACK_DIAL_BUSINESS_TYPE_OPTIONS;
-const FALLBACK_CALLER_ID_GROUPS = [
-  { key: "eastern", label: "Eastern" },
-  { key: "central", label: "Central" },
-  { key: "mountain", label: "Mountain" },
-  { key: "pacific", label: "Pacific" },
-];
-export const CALLER_ID_GROUPS = Array.isArray(vocabulary.callerIdGroups) && vocabulary.callerIdGroups.length
-  ? vocabulary.callerIdGroups
-  : FALLBACK_CALLER_ID_GROUPS;
-export const DEFAULT_CALLER_ID_GROUP = vocabulary.defaultCallerIdGroup || "eastern";
 export const CALLBACK_STATUS_HOURS = vocabulary.callbackStatusHours ?? 2;
 // A prospect in a never-dial status cannot go back to "new" or "dialed".
 export const leavesQueueForGood = (lead, status) => (

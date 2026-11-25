@@ -12,7 +12,7 @@ export const state = {
   selected_business_type: "",
   business_type_options: [],
   dial_pool_status: "new",
-  caller_id_group: "eastern",
+  caller_id_queue: null,
   metrics: { today: {}, all_time: {}, daily: [] },
   performance: null,
   counts: { total: 0, new: 0, calling: 0, booked: 0 },

@@ -231,37 +231,40 @@ TIMEZONE_ALIASES = {
 }
 UTC_OFFSET_ZONES = {-5: "Eastern", -6: "Central", -7: "Mountain", -8: "Pacific", -9: "Alaska", -10: "Hawaii"}
 
-# Rotating outbound caller IDs grouped by the timezone they represent.
-# The dialer picks a group independently of the prospect timezone filter.
-CALLER_ID_GROUP_KEYS = ("eastern", "central", "mountain", "pacific")
-DEFAULT_CALLER_ID_GROUP = "eastern"
-CALLER_ID_GROUPS = {
-    "eastern": {
-        "label": "Eastern",
-        "caller_ids": ("+18607354163", "+18607521887", "+18607824999"),
-    },
-    "central": {
-        "label": "Central",
-        "caller_ids": ("+19206545904", "+19207827371", "+19205668506"),
-    },
-    "mountain": {
-        "label": "Mountain",
-        "caller_ids": ("+15055602960", "+15053995221", "+15053703413"),
-    },
-    "pacific": {
-        "label": "Pacific",
-        "caller_ids": ("+12136953093", "+12139533359", "+12137204625"),
-    },
-}
+# Default outbound caller ID pool (seed for local queue and Supabase bootstrap).
+_LEGACY_CALLER_ID_GROUPS = (
+    ("+18607354163", "+18607521887", "+18607824999"),
+    ("+19206545904", "+19207827371", "+19205668506"),
+    ("+15055602960", "+15053995221", "+15053703413"),
+    ("+12136953093", "+12139533359", "+12137204625"),
+)
+DEFAULT_CALLER_ID_POOL = tuple(
+    phone for group in _LEGACY_CALLER_ID_GROUPS for phone in group
+)
 
-
-def resolve_caller_id_group(key):
-    parsed = str(key or "").strip().lower()
-    return parsed if parsed in CALLER_ID_GROUPS else DEFAULT_CALLER_ID_GROUP
-
-
-def caller_ids_for_group(key):
-    return list(CALLER_ID_GROUPS[resolve_caller_id_group(key)]["caller_ids"])
+CALL_SCRIPT_INDUSTRIES = (
+    ("daycare", "Daycare"),
+    ("dental", "Dental"),
+    ("general", "General"),
+    ("legal", "Legal"),
+    ("medical", "Medical"),
+)
+CALL_SCRIPT_PROSPECT_TYPES = (
+    ("decision_maker", "Decision maker"),
+    ("gatekeeper", "Gatekeeper"),
+)
+CALL_SCRIPT_VARIATIONS = (
+    (1, "Variation 1"),
+    (2, "Variation 2"),
+    (3, "Variation 3"),
+)
+CALL_SCRIPT_INDUSTRY_KEYS = frozenset(key for key, _label in CALL_SCRIPT_INDUSTRIES)
+CALL_SCRIPT_PROSPECT_TYPE_KEYS = frozenset(key for key, _label in CALL_SCRIPT_PROSPECT_TYPES)
+CALL_SCRIPT_VARIATION_KEYS = frozenset(key for key, _label in CALL_SCRIPT_VARIATIONS)
+MAX_CALL_SCRIPT_VARIATIONS = len(CALL_SCRIPT_VARIATIONS)
+DEFAULT_CALL_SCRIPT_INDUSTRY = CALL_SCRIPT_INDUSTRIES[0][0]
+DEFAULT_CALL_SCRIPT_PROSPECT_TYPE = CALL_SCRIPT_PROSPECT_TYPES[0][0]
+DEFAULT_CALL_SCRIPT_VARIATION = CALL_SCRIPT_VARIATIONS[0][0]
 
 ORG_ROLES = ("owner", "manager", "rep")
 ORG_MANAGER_ROLES = ("owner", "manager")
@@ -428,10 +431,6 @@ def browser_vocabulary():
         "stages": list(STAGES),
         "callStates": list(CALL_STATES),
         "timezones": dict(TIMEZONE_NAMES),
-        "callerIdGroups": [
-            {"key": key, "label": CALLER_ID_GROUPS[key]["label"]} for key in CALLER_ID_GROUP_KEYS
-        ],
-        "defaultCallerIdGroup": DEFAULT_CALLER_ID_GROUP,
         "callbackStatusHours": NO_PICKUP_CALLBACK_HOURS,
         "pipelineSteps": [dict(item) for item in PIPELINE_STEPS],
         "pipelineFirstStep": PIPELINE_FIRST_STEP,
@@ -441,6 +440,12 @@ def browser_vocabulary():
         "settingKeys": list(SETTING_KEYS),
         "secretInputs": [dict(item) for item in SECRET_INPUTS],
         "marketingTouchesField": MARKETING_TOUCHES_FIELD,
+        "callScriptIndustries": [{"key": key, "label": label} for key, label in CALL_SCRIPT_INDUSTRIES],
+        "callScriptProspectTypes": [{"key": key, "label": label} for key, label in CALL_SCRIPT_PROSPECT_TYPES],
+        "callScriptVariations": [{"key": key, "label": label} for key, label in CALL_SCRIPT_VARIATIONS],
+        "defaultCallScriptIndustry": DEFAULT_CALL_SCRIPT_INDUSTRY,
+        "defaultCallScriptProspectType": DEFAULT_CALL_SCRIPT_PROSPECT_TYPE,
+        "defaultCallScriptVariation": DEFAULT_CALL_SCRIPT_VARIATION,
     }
 
 

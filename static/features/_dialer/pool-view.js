@@ -2,8 +2,6 @@ import { state } from "../../_core/state.js";
 import {
   byId,
   CRM_STATUS_LABELS,
-  CALLER_ID_GROUPS,
-  DEFAULT_CALLER_ID_GROUP,
   DEFAULT_DIAL_POOL_STATUS,
   DIAL_POOL_STATUSES,
   DIAL_POOL_STATUS_LABELS,
@@ -58,28 +56,9 @@ export function renderBusinessTypeFilter() {
   }
 }
 
-export function renderCallerIdGroupStatus() {
-  const selects = dialerEls("dialerCallerIdGroup");
-  if (!selects.length) return;
-  const selectedKey = state.caller_id_group || DEFAULT_CALLER_ID_GROUP;
-  const keys = CALLER_ID_GROUPS.map((item) => item.key);
-  const options = CALLER_ID_GROUPS.map((item) => new Option(`Caller ID · ${item.label}`, item.key));
-  const value = keys.includes(selectedKey) ? selectedKey : DEFAULT_CALLER_ID_GROUP;
-  const disabled = Boolean(
-    state.active_lead_id || state.active_lead || state.pending_outcome_id || state.pending_outcome
-    || (state.in_flight && state.in_flight.length),
-  );
-  for (const select of selects) {
-    select.replaceChildren(...options.map((o) => o.cloneNode(true)));
-    select.value = value;
-    select.disabled = disabled;
-  }
-}
-
-export function renderTimezoneFilters() {
-  renderPoolStatusFilters();
-  renderBusinessTypeFilter();
-  renderCallerIdGroupStatus();
+export function renderPoolTimezoneFilter() {
+  const poolSelect = document.getElementById("poolTimezoneFilter");
+  if (!poolSelect) return;
   const groups = state.timezone_groups || [];
   const totalNew = groups.reduce((sum, group) => sum + group.count, 0);
   const selected = state.selected_timezone || "";
@@ -87,91 +66,18 @@ export function renderTimezoneFilters() {
   const options = [new Option(`All time zones (${totalNew})`, "")];
   if (selected && !knownZones.includes(selected)) options.push(new Option(selected, selected));
   options.push(...groups.map((group) => new Option(`${group.name} (${group.count})`, group.name)));
-  for (const select of [...dialerEls("dialerTimezoneFilter"), document.getElementById("poolTimezoneFilter")].filter(Boolean)) {
-    select.replaceChildren(...options.map((option) => option.cloneNode(true)));
-    select.value = selected;
-  }
-  syncDialerTimezoneMenu();
+  poolSelect.replaceChildren(...options.map((option) => option.cloneNode(true)));
+  poolSelect.value = selected;
 }
 
-function syncDialerTimezoneMenu() {
-  const selects = dialerEls("dialerTimezoneFilter");
-  const buttons = dialerEls("dialerTimezoneButton");
-  const lists = dialerEls("dialerTimezoneList");
-  for (let i = 0; i < selects.length; i++) {
-    const select = selects[i];
-    const button = buttons[i];
-    const list = lists[i];
-    if (!select || !button || !list) continue;
-    const chosen = select.selectedOptions[0];
-    button.textContent = chosen ? chosen.textContent : "All time zones";
-    list.replaceChildren(...[...select.options].map((option) => {
-      const item = document.createElement("li");
-      item.className = "timezone-menu-option";
-      item.role = "option";
-      item.dataset.value = option.value;
-      item.textContent = option.textContent;
-      item.setAttribute("aria-selected", option.value === select.value ? "true" : "false");
-      return item;
-    }));
-  }
-}
-
-let timezoneMenuGlobalBound = false;
-let perMenuTimezoneBound = false;
-
-export function bindDialerTimezoneMenu() {
-  if (perMenuTimezoneBound) return;
-  perMenuTimezoneBound = true;
-  const menus = [];
-  for (const select of dialerEls("dialerTimezoneFilter")) {
-    const menuRoot = select.closest(".timezone-menu");
-    const button = menuRoot?.querySelector(".timezone-menu-button");
-    const list = menuRoot?.querySelector(".timezone-menu-list");
-    if (menuRoot && button && list) menus.push({ button, list, select });
-  }
-  if (!timezoneMenuGlobalBound) {
-    timezoneMenuGlobalBound = true;
-    document.addEventListener("click", (event) => {
-      if (event.target.closest(".timezone-menu")) return;
-      for (const list of dialerEls("dialerTimezoneList")) {
-        list.hidden = true;
-      }
-      for (const button of dialerEls("dialerTimezoneButton")) {
-        button.setAttribute("aria-expanded", "false");
-      }
-    });
-    document.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-      const openList = dialerEls("dialerTimezoneList").find((node) => !node.hidden);
-      if (!openList) return;
-      openList.hidden = true;
-      const menu = openList.closest(".timezone-menu");
-      const btn = menu?.querySelector(".timezone-menu-button");
-      btn?.setAttribute("aria-expanded", "false");
-      btn?.focus();
-    });
-  }
-  for (const { button, list, select } of menus) {
-    button.addEventListener("click", () => {
-      const open = list.hidden;
-      list.hidden = !open;
-      button.setAttribute("aria-expanded", open ? "true" : "false");
-    });
-    list.addEventListener("click", (event) => {
-      const item = event.target.closest(".timezone-menu-option");
-      if (!item) return;
-      select.value = item.dataset.value;
-      syncDialerTimezoneMenu();
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-      list.hidden = true;
-      button.setAttribute("aria-expanded", "false");
-    });
-  }
+export function renderDialFilters() {
+  renderPoolStatusFilters();
+  renderBusinessTypeFilter();
+  renderPoolTimezoneFilter();
 }
 
 export function syncDialFiltersFromState() {
-  renderTimezoneFilters();
+  renderDialFilters();
 }
 
 export function renderCallerPool() {

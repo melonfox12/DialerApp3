@@ -15,7 +15,7 @@ import { renderOutcomeRow } from "./outcome-row.js";
 import { renderCrmStatus } from "./crm-status.js";
 import { renderQueueStrip } from "./queue.js";
 import { renderSessionMomentum } from "./session-goal.js";
-import { renderProspectNotesPanel } from "./notes-panel.js";
+import { renderCallScriptPanel } from "./call-script-panel.js";
 
 export function renderDialer() {
   if (S.dashboardTab !== "dialer") return;
@@ -67,5 +67,5 @@ export function renderDialer() {
   renderOutcomeRow(pending);
   renderSessionMomentum();
   renderCallStage(stage, target);
-  renderProspectNotesPanel();
+  renderCallScriptPanel();
 }

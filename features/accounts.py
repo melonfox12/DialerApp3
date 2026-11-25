@@ -6,6 +6,8 @@ import time
 from features import org
 from features.dialer import Dialer, TokenIndex
 from features.metrics import MetricsStore, SupabaseMetricsStore
+from features._dialer.caller_id_queue import CallerIdQueueStore
+from features.call_scripts import CallScriptsStore
 from features._prospects.dial_archive import DialArchiveStore
 from features._prospects.dial_records import DialRecordsStore
 from features.prospects import ProspectStore
@@ -57,6 +59,8 @@ class AppRuntime:
             dialer.dial_records = dial_records
             dialer.storage_name = self.storage_name
             dialer.token_index = self.tokens
+            dialer.caller_id_queue_store = CallerIdQueueStore(crm_path=CRM_PATH)
+            dialer.call_scripts_store = CallScriptsStore(crm_path=CRM_PATH)
             self.local = Account(crm, metrics, dialer, dial_archive, dial_records)
             merged = {**read_env(ENV_PATH), **dialer.account_values}
             try:
@@ -90,6 +94,10 @@ class AppRuntime:
             existing = self.sessions.get(user_id)
         if existing:
             existing.dialer.account_email = user.get("email") or existing.dialer.account_email
+            if not getattr(existing.dialer, "caller_id_queue_store", None):
+                existing.dialer.caller_id_queue_store = CallerIdQueueStore(client=self.client)
+            if not getattr(existing.dialer, "call_scripts_store", None):
+                existing.dialer.call_scripts_store = CallScriptsStore(client=self.client)
             try:
                 membership = org.sync_user_on_login(self.client, user)
             except OSError:
@@ -107,6 +115,8 @@ class AppRuntime:
         dialer.token_index = self.tokens
         dialer.account_user_id = user_id
         dialer.account_email = user.get("email") or ""
+        dialer.caller_id_queue_store = CallerIdQueueStore(client=self.client)
+        dialer.call_scripts_store = CallScriptsStore(client=self.client)
         dialer.account_values = load_app_settings(self.client, user_id)
         dialer.settings_saver = lambda active: self.persist_settings(active)
         merged = {**read_env(ENV_PATH), **dialer.account_values}

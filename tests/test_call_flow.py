@@ -199,7 +199,8 @@ class CallFlowTests(unittest.TestCase):
 
         status, started = self.json_app("POST", "/api/start", {})
         self.assertEqual(status, 200)
-        self.assertEqual(started["caller_ids"], ["+18607354163", "+18607521887", "+18607824999"])
+        self.assertGreaterEqual(len(started["caller_ids"]), 12)
+        self.assertIn("caller_id_queue", started)
         agent_token = started["client_call_token"]
         status, rejoin = self.json_app("POST", "/api/voice/rejoin", {})
         self.assertEqual(status, 200)

@@ -12,16 +12,14 @@ from features._dialer.rules import new_session, session_summary
 from shared.infra import utc_now
 from shared.prospect_schema import display_name
 from features._prospects.migration_flags import mark_migration_done, migration_done
+from features._dialer.caller_id_queue import sync_dialer_caller_pool
 from shared.vocabulary import (
-    CALLER_ID_GROUPS,
     DIAL_POOL_STATUS_LABELS,
     DIAL_POOL_STATUSES,
     NOV5_2026_STATIC_CALLBACK_MIGRATION_FLAG,
     NOV5_2026_STATIC_CALLBACK_SETTING,
-    caller_ids_for_group,
     canonical_status,
     dial_business_type_label,
-    resolve_caller_id_group,
     resolve_dial_business_type,
 )
 
@@ -153,28 +151,6 @@ def _prospect_lines_busy(state):
         return any(call.get("kind") != "agent" for call in state.in_flight.values())
 
 
-def set_caller_id_group(state, key):
-    parsed = str(key or "").strip().lower()
-    if parsed not in CALLER_ID_GROUPS:
-        raise ValueError("Caller ID group must be Eastern, Central, Mountain, or Pacific.")
-    callers = caller_ids_for_group(parsed)
-    with state.lock:
-        current_key = resolve_caller_id_group(getattr(state, "caller_id_group", None))
-        if current_key == parsed and list(state.callers) == callers:
-            state.caller_id_group = parsed
-            return projection.public_state(state)
-    if _prospect_lines_busy(state):
-        raise ValueError("Finish or stop the current calls before changing caller ID.")
-    label = CALLER_ID_GROUPS[parsed]["label"]
-    with state.lock:
-        state.caller_id_group = parsed
-        state.callers = callers
-        state.caller_index = 0
-        state.last_event = f"Caller ID: {label}"
-    state.record_activity(f"Caller ID set to {label}", "web")
-    return projection.public_state(state)
-
-
 def set_pool_filters(state, timezone=None, pool_status=None, business_type=None):
     leads = state.crm.snapshot()
     with state.lock:
@@ -235,7 +211,9 @@ def start(state, priority_lead_id=None):
     values = state.read_settings()
     state.settings = values
     state.public_base_url = public_url
-    callers = caller_ids_for_group(state.caller_id_group)
+    callers = sync_dialer_caller_pool(state, bootstrap=True)
+    if not callers:
+        raise ValueError("No caller ID numbers are available. Configure the caller ID queue.")
     state.record_activity(f"Twilio ready: {len(callers)} rotating caller ID(s)", "api")
     twilio.prepare_browser_voice(state, values)
     eligible = calls._pool_leads(state)
@@ -265,8 +243,6 @@ def start(state, priority_lead_id=None):
         state.in_flight.clear()
         calls._release_tokens(state)
         state.calls.clear()
-        state.callers = callers
-        state.caller_index = 0
         state.conference = "crm-" + secrets.token_hex(8)
         state.session = new_session(goal=int(values["SESSION_GOAL"]))
         state.taggable_call = None
