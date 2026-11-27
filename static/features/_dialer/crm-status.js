@@ -9,6 +9,7 @@ import { nextProspectLabel, queueProspect } from "./queue.js";
 const PRIMARY_OUTCOMES = [
   // dialed status keeps the 2-hour callback timer and pool re-queue behavior.
   { status: "dialed", label: "Engaged", className: "outcome-btn outcome-btn-engaged" },
+  { disposition: "no_answer", label: "No answer", className: "outcome-btn outcome-btn-no-answer" },
   { status: "closed", label: "Disqualified", className: "outcome-btn outcome-btn-disqualified" },
   { status: "qualified", label: "Qualified", className: "outcome-btn outcome-btn-qualified" },
 ];
@@ -25,22 +26,29 @@ function buildButton(item, lead) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = item.className;
-  button.dataset.status = item.status;
+  const outcomeStatus = item.status || "dialed";
+  if (item.disposition) button.dataset.disposition = item.disposition;
+  else button.dataset.status = item.status;
   button.textContent = item.label;
-  button.disabled = !lead || saving || leavesQueueForGood(lead, item.status);
-  button.setAttribute("aria-pressed", lead?.status === item.status ? "true" : "false");
+  button.disabled = !lead || saving || leavesQueueForGood(lead, outcomeStatus);
+  button.setAttribute("aria-pressed", lead?.status === outcomeStatus ? "true" : "false");
   return button;
 }
 
 export function bindCrmStatus() {
   for (const root of dialerEls("crmStatusButtons")) {
     root.addEventListener("click", (event) => {
-      const button = event.target.closest("[data-status]");
+      const button = event.target.closest("[data-status], [data-disposition]");
       if (!button || saving) return;
-      const status = String(button.dataset.status || "").trim();
-      if (!CRM_STATUS_KEYS.includes(status)) return;
       const lead = queueProspect();
       if (!lead) return;
+      const disposition = String(button.dataset.disposition || "").trim();
+      if (disposition) {
+        saveDisposition(lead, disposition, button.textContent);
+        return;
+      }
+      const status = String(button.dataset.status || "").trim();
+      if (!CRM_STATUS_KEYS.includes(status)) return;
       if (status === "booked" && lead.status === "booked") return;
       saveCrmStatus(lead, status, button.textContent);
     });
@@ -82,6 +90,23 @@ async function saveCrmStatus(lead, status, label) {
     else showToast(`${name}: ${label}`);
   } catch (error) {
     showToast(errorText(error, "Could not update the CRM status."), true);
+  } finally {
+    saving = false;
+    render();
+  }
+}
+
+async function saveDisposition(lead, disposition, label) {
+  saving = true;
+  renderCrmStatus();
+  const name = nextProspectLabel(lead);
+  try {
+    const result = await postJson(`/api/leads/${encodeURIComponent(lead.id)}/status`, { disposition });
+    await applyMutationPayload(result);
+    if (disposition === "no_answer") showToast(`No answer — callback started for ${name}`);
+    else showToast(`${name}: ${label}`);
+  } catch (error) {
+    showToast(errorText(error, "Could not save the call disposition."), true);
   } finally {
     saving = false;
     render();
