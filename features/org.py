@@ -4,7 +4,8 @@ import threading
 import time
 
 from features import org_storage
-from shared.vocabulary import ORG_MANAGER_ROLES, TEAM_ONLINE_SECONDS
+from shared.config import ENV_PATH
+from shared.vocabulary import DEFAULT_ORG_NAME, ORG_MANAGER_ROLES, TEAM_ONLINE_SECONDS
 
 _membership_cache = {}
 _membership_lock = threading.Lock()
@@ -47,7 +48,7 @@ def load_membership(client, user_id):
             "org_id": str(member.get("org_id") or ""),
             "org_name": str(org.get("name") or ""),
             "role": str(member.get("role") or ""),
-            "status": str(member.get("status") or ""),
+            "status": str(member.get("status") or "active"),
             "can_manage_team": can_manage_team(member.get("role")),
         }
     with _membership_lock:
@@ -67,6 +68,25 @@ def clear_membership_cache(user_id=None):
         _membership_cache.pop(_cache_key(user_id), None)
 
 
+def _org_name_for_new_owner(email):
+    local = str(email or "").split("@")[0].strip()
+    if local:
+        return f"{local.title()}'s team"
+    return DEFAULT_ORG_NAME
+
+
+def bootstrap_owner_org(client, user_id, email=""):
+    """First sign-in with no invite: create an org and make this user the owner."""
+    existing = org_storage.get_active_membership(client, user_id)
+    if existing:
+        clear_membership_cache(user_id)
+        return load_membership(client, user_id)
+    org = org_storage.create_organization(client, _org_name_for_new_owner(email))
+    org_storage.add_member(client, org["id"], user_id=user_id, role="owner", status="active")
+    clear_membership_cache(user_id)
+    return load_membership(client, user_id)
+
+
 def sync_user_on_login(client, user):
     if not client:
         return _empty_membership()
@@ -79,7 +99,13 @@ def sync_user_on_login(client, user):
     if invite and not invite.get("user_id"):
         org_storage.activate_invite(client, invite["id"], user_id)
         clear_membership_cache(user_id)
-    return load_membership(client, user_id)
+    membership = load_membership(client, user_id)
+    if not membership.get("org_id"):
+        try:
+            membership = bootstrap_owner_org(client, user_id, email)
+        except OSError:
+            membership = load_membership(client, user_id)
+    return membership
 
 
 def attach_membership_to_dialer(dialer, membership):
@@ -92,7 +118,48 @@ def membership_for_auth(dialer):
         "org_id": base.get("org_id") or "",
         "org_name": base.get("org_name") or "",
         "role": base.get("role") or "",
+        "status": base.get("status") or "",
         "can_manage_team": bool(base.get("can_manage_team")),
+    }
+
+
+def _voice_settings_ready(dialer):
+    from features.settings import values
+
+    user_id = getattr(dialer, "account_user_id", "") or ""
+    account_values = getattr(dialer, "account_values", {}) or {}
+    env_path = getattr(dialer, "env_path", ENV_PATH)
+    current = values(env_path, account_values, signed_in=bool(user_id))
+    return bool(
+        current.get("TWILIO_ACCOUNT_SID")
+        and current.get("TWILIO_AUTH_TOKEN")
+        and current.get("TWILIO_API_KEY")
+        and current.get("TWILIO_API_SECRET")
+        and current.get("TWILIO_TWIML_APP_SID")
+        and current.get("PUBLIC_BASE_URL")
+    )
+
+
+def account_setup_payload(runtime, dialer):
+    """Onboarding state for signed-in accounts (org + voice credentials)."""
+    membership = membership_for_auth(dialer)
+    user_id = getattr(dialer, "account_user_id", "") or ""
+    supabase = bool(getattr(runtime, "client", None))
+    signed_in = bool(user_id) if supabase else True
+    org_ready = bool(membership.get("org_id"))
+    voice_ready = _voice_settings_ready(dialer)
+    next_steps = []
+    if supabase and not org_ready:
+        next_steps.append("organization")
+    if not voice_ready:
+        next_steps.append("twilio_voice")
+    return {
+        "storage": getattr(runtime, "storage_name", "local JSON files"),
+        "signed_in": signed_in,
+        "org_ready": org_ready,
+        "voice_ready": voice_ready,
+        "membership": membership,
+        "next_steps": next_steps,
     }
 
 

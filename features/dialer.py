@@ -240,8 +240,11 @@ def get_live(request):
     try:
         from features import team
 
+        from features import usage_events
+
         dialer = request.account.dialer
         payload = dialer.live_state()
+        usage_events.maybe_record_stage(dialer, payload.get("stage"))
         team.maybe_record_presence(request.runtime, dialer, payload)
         request.send_json(200, payload)
     except OSError as exc:

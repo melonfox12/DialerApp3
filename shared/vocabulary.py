@@ -271,7 +271,19 @@ ORG_MANAGER_ROLES = ("owner", "manager")
 ORG_MEMBER_STATUSES = ("active", "invited", "disabled")
 DEFAULT_ORG_NAME = "My team"
 TEAM_ONLINE_SECONDS = 90
-TEAM_PRESENCE_WRITE_SECONDS = 30
+TEAM_PRESENCE_WRITE_SECONDS = 10
+USAGE_EVENT_KINDS = (
+    "session_start",
+    "session_stop",
+    "session_pause",
+    "session_resume",
+    "stage_change",
+    "connect",
+    "disposition",
+    "tab_focus",
+)
+DEFAULT_USAGE_TIMELINE_MINUTES = 60
+USAGE_TAB_THROTTLE_SECONDS = 30
 
 SETTING_DEFAULTS = {
     "PIPELINE_CUSTOM_STEPS_JSON": "",

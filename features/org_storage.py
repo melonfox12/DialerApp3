@@ -149,6 +149,30 @@ def list_presence_for_org(client, org_id):
     return {str(row["user_id"]): row for row in rows if row.get("user_id")}
 
 
+def insert_usage_event(client, org_id, user_id, kind, payload=None, at_iso=None):
+    body = {
+        "org_id": org_id,
+        "user_id": user_id,
+        "kind": str(kind or ""),
+        "payload": payload if isinstance(payload, dict) else {},
+    }
+    if at_iso:
+        body["at"] = at_iso
+    client.request("POST", "usage_events", None, body, "return=minimal")
+
+
+def list_usage_events(client, org_id, user_id, *, since_iso, limit=250):
+    rows = client.request("GET", "usage_events", {
+        "select": "id,kind,at,payload",
+        "org_id": f"eq.{org_id}",
+        "user_id": f"eq.{user_id}",
+        "at": f"gte.{since_iso}",
+        "order": "at.desc",
+        "limit": str(max(1, min(500, int(limit)))),
+    }) or []
+    return list(rows) if isinstance(rows, list) else []
+
+
 def invite_member(client, org_id, email, role="rep"):
     if role not in ORG_ROLES:
         raise ValueError("Invalid organization role.")

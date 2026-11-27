@@ -71,6 +71,12 @@ def _pickup(state, call):
     for other in others:
         _drop_line(state, other, calls.RACE_LOST)
     state.record_activity(f"Pickup on the line: {name}. Stay on it or skip.", "call")
+    from features import usage_events
+
+    usage_events.record(state, "connect", {
+        "lead_id": call.get("lead_id") or "",
+        "answered_by": call.get("answered_by") or "",
+    })
     return True
 
 def _amd_should_connect(answered_by):

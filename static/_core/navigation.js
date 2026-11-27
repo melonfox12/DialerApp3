@@ -1,3 +1,4 @@
+import { postJson } from "./api.js";
 import { byId, humanDialerPanel, setText } from "./format.js";
 import { showToast } from "./notify.js";
 import { renderCallerPool, renderTable } from "./registry.js";
@@ -11,9 +12,19 @@ const TAB_ORDER_KEY = "prospect-desk-sidebar-order";
 const TAB_ACTIVE_KEY = "prospect-desk-dashboard-tab";
 const FOLDER_COLLAPSE_KEY = "prospect-desk-sidebar-folders-collapsed";
 const TAB_FOLDER_KEY = "prospect-desk-sidebar-tab-folders";
+const USAGE_TAB_THROTTLE_MS = 30_000;
 const SIDEBAR_FOLDERS = {
   misc: LOCKED_DASHBOARD_TABS,
 };
+let lastUsageTabAt = 0;
+
+function maybeRecordTabFocus(tab) {
+  if (!S.googleAuthEnabled || !S.accessToken) return;
+  const now = Date.now();
+  if (now - lastUsageTabAt < USAGE_TAB_THROTTLE_MS) return;
+  lastUsageTabAt = now;
+  void postJson("/api/usage/tab", { tab }).catch(() => {});
+}
 
 function isLockedDashboardTab(name) {
   return LOCKED_DASHBOARD_TABS.includes(name);
@@ -370,6 +381,7 @@ export function setDashboardTab(name, moveFocus = false) {
     import("../features/team.js").then((module) => module.renderTeam());
   }
   if (moveFocus) selectedButton.focus();
+  maybeRecordTabFocus(S.dashboardTab);
 }
 
 export function setPerformanceMode(mode) {

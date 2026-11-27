@@ -1,6 +1,7 @@
 import unittest
 import uuid
 from datetime import datetime, timezone, timedelta
+from unittest.mock import MagicMock, patch
 
 from features import org
 
@@ -64,6 +65,67 @@ class OrgAccessTests(unittest.TestCase):
             self.assertEqual(result, self.org_id)
         finally:
             org_storage.get_active_membership = original
+
+
+class SyncLoginBootstrapTests(unittest.TestCase):
+    def test_org_name_for_new_owner(self):
+        self.assertEqual(org._org_name_for_new_owner("ada@example.com"), "Ada's team")
+        self.assertEqual(org._org_name_for_new_owner("bad-email"), "Bad-Email's team")
+        from shared.vocabulary import DEFAULT_ORG_NAME
+
+        self.assertEqual(org._org_name_for_new_owner(""), DEFAULT_ORG_NAME)
+
+    @patch("features.org.org_storage.add_member")
+    @patch("features.org.org_storage.create_organization")
+    @patch("features.org.org_storage.get_active_membership")
+    @patch("features.org.org_storage.get_organization")
+    def test_sync_user_on_login_bootstraps_owner_without_invite(
+        self, mock_get_org, mock_get_member, mock_create_org, mock_add_member,
+    ):
+        user_id = str(uuid.uuid4())
+        org_id = str(uuid.uuid4())
+        member_row = {
+            "org_id": org_id,
+            "user_id": user_id,
+            "role": "owner",
+            "status": "active",
+        }
+        mock_get_member.side_effect = [None, None, member_row]
+        mock_create_org.return_value = {"id": org_id, "name": "Ada's team"}
+        mock_get_org.return_value = {"id": org_id, "name": "Ada's team"}
+        client = MagicMock()
+        with patch("features.org.org_storage.upsert_profile"), patch(
+            "features.org.org_storage.find_invite_for_email", return_value=None,
+        ):
+            membership = org.sync_user_on_login(client, {"id": user_id, "email": "ada@example.com"})
+        mock_create_org.assert_called_once()
+        mock_add_member.assert_called_once()
+        self.assertEqual(membership["org_id"], org_id)
+        self.assertEqual(membership["role"], "owner")
+        self.assertTrue(membership["can_manage_team"])
+
+    def test_account_setup_payload_local_voice_flags(self):
+        from shared.config import ENV_PATH
+
+        class Runtime:
+            client = None
+            storage_name = "local JSON files"
+
+        class Dialer:
+            account_user_id = ""
+            account_values = {}
+            env_path = ENV_PATH
+            org_membership = {
+                "org_id": "",
+                "org_name": "",
+                "role": "",
+                "status": "",
+                "can_manage_team": False,
+            }
+
+        payload = org.account_setup_payload(Runtime(), Dialer())
+        self.assertTrue(payload["signed_in"])
+        self.assertIn("twilio_voice", payload["next_steps"])
 
 
 if __name__ == "__main__":

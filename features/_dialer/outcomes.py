@@ -67,6 +67,9 @@ def end_call_with_status(state, lead_id, status, scheduled_until=None):
     should_fill, should_advance = queue.drop_prospect_call(state, lead_id)
     name = display_name(lead)
     state.record_activity(f"{name} marked {status}", "web")
+    from features import usage_events
+
+    usage_events.record(state, "disposition", {"lead_id": lead_id, "status": status})
     with state.lock:
         state.last_event = f"{name} marked {status}"
     if should_fill:

@@ -1,9 +1,13 @@
 import { byId, postJson, registerRenderer, request, setText, showToast, S, state } from "../core.js";
 
-const REFRESH_MS = 8000;
+const ROSTER_REFRESH_MS = 5000;
+const LIVE_REFRESH_MS = 1500;
+const USAGE_REFRESH_MS = 10_000;
 let roster = null;
 let selectedUserId = null;
-let fetchAt = 0;
+let rosterFetchAt = 0;
+let liveTimer = null;
+let liveFetchAt = 0;
 
 function teamReady() {
   return Boolean(S.canManageTeam);
@@ -20,16 +24,45 @@ export function syncTeamChrome() {
   }
 }
 
+function formatSeen(iso) {
+  if (!iso) return "unknown";
+  const seen = Date.parse(iso);
+  if (!Number.isFinite(seen)) return iso;
+  const delta = Math.max(0, Date.now() - seen);
+  if (delta < 60_000) return `${Math.floor(delta / 1000)}s ago`;
+  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
+  return new Date(seen).toLocaleString();
+}
+
+function stopLivePolling() {
+  if (liveTimer) {
+    clearInterval(liveTimer);
+    liveTimer = null;
+  }
+}
+
+function syncLivePolling() {
+  stopLivePolling();
+  if (S.dashboardTab !== "team" || !teamReady() || !selectedUserId) return;
+  liveTimer = setInterval(() => {
+    if (S.dashboardTab !== "team" || !selectedUserId) {
+      stopLivePolling();
+      return;
+    }
+    loadMemberDetail(selectedUserId, false);
+  }, LIVE_REFRESH_MS);
+}
+
 async function refreshRoster(force = false) {
   if (!teamReady()) return;
   const now = Date.now();
-  if (!force && roster && now - fetchAt < REFRESH_MS) return;
+  if (!force && roster && now - rosterFetchAt < ROSTER_REFRESH_MS) return;
   try {
     roster = await request("/api/team/roster");
-    fetchAt = now;
+    rosterFetchAt = now;
     state.team_roster = roster;
     if (roster?.org_name) {
-      setText("teamOrgSubtitle", `${roster.org_name} · roster and live activity`);
+      setText("teamOrgSubtitle", `${roster.org_name} · roster and live activity · updates every ${ROSTER_REFRESH_MS / 1000}s`);
     }
     renderTeamTable();
     if (selectedUserId) {
@@ -86,10 +119,71 @@ function renderTeamTable() {
     row.addEventListener("click", () => {
       if (!member.user_id) return;
       selectedUserId = member.user_id;
+      syncLivePolling();
       loadMemberDetail(member.user_id, true);
     });
     body.append(row);
   }
+}
+
+function sumMetricSeries(series, key) {
+  return (series || []).reduce((total, day) => total + Number(day[key] || 0), 0);
+}
+
+const USAGE_KIND_LABELS = {
+  session_start: "Session started",
+  session_stop: "Session stopped",
+  session_pause: "Paused",
+  session_resume: "Resumed",
+  stage_change: "Stage",
+  connect: "Connected",
+  disposition: "Disposition",
+  tab_focus: "Tab",
+};
+
+function usageEventDetail(event) {
+  const payload = event?.payload || {};
+  if (event.kind === "stage_change") return payload.stage || "";
+  if (event.kind === "tab_focus") return payload.tab || "";
+  if (event.kind === "disposition") return payload.status || "";
+  if (event.kind === "connect") return payload.lead_id ? "live call" : "";
+  if (event.kind === "session_start" && payload.queue_total != null) {
+    return `${payload.queue_total} in queue`;
+  }
+  return "";
+}
+
+function renderUsageTimeline(events, minutes) {
+  const section = document.createElement("section");
+  section.className = "team-usage-timeline";
+  const heading = document.createElement("h4");
+  heading.className = "team-section-label";
+  heading.textContent = `Activity · last ${minutes} min`;
+  section.append(heading);
+  const list = document.createElement("ol");
+  list.className = "team-usage-list";
+  const items = [...(events || [])].reverse();
+  if (!items.length) {
+    const empty = document.createElement("li");
+    empty.textContent = "No recorded events yet (run Supabase migration for usage_events).";
+    list.append(empty);
+  } else {
+    for (const event of items) {
+      const row = document.createElement("li");
+      const stamp = document.createElement("time");
+      const at = Date.parse(event.at);
+      stamp.dateTime = event.at || "";
+      stamp.textContent = Number.isFinite(at)
+        ? new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })
+        : event.at || "—";
+      const label = USAGE_KIND_LABELS[event.kind] || event.kind || "Event";
+      const detail = usageEventDetail(event);
+      row.append(stamp, document.createTextNode(` ${label}${detail ? ` · ${detail}` : ""}`));
+      list.append(row);
+    }
+  }
+  section.append(list);
+  return section;
 }
 
 async function loadMemberDetail(userId, showPanel) {
@@ -97,24 +191,76 @@ async function loadMemberDetail(userId, showPanel) {
   const body = byId("teamMemberDetailBody");
   if (!userId) {
     detail.hidden = true;
+    stopLivePolling();
     return;
   }
+  const now = Date.now();
+  const metricsStale = now - liveFetchAt > LIVE_REFRESH_MS * 2;
+  const usageStale = now - liveFetchAt > USAGE_REFRESH_MS;
   try {
-    const [metrics, live] = await Promise.all([
-      request(`/api/team/members/${encodeURIComponent(userId)}/metrics?days=7`),
+    const needsMetrics = showPanel || metricsStale || !body.childElementCount;
+    const needsUsage = showPanel || usageStale || !body.childElementCount;
+    const requests = [
       request(`/api/team/members/${encodeURIComponent(userId)}/live`),
-    ]);
+    ];
+    if (needsMetrics) {
+      requests.push(request(`/api/team/members/${encodeURIComponent(userId)}/metrics?days=7`));
+    }
+    if (needsUsage) {
+      requests.push(request(`/api/team/members/${encodeURIComponent(userId)}/usage?minutes=60`));
+    }
+    liveFetchAt = now;
+    const results = await Promise.all(requests);
+    const live = results[0];
+    let metrics = null;
+    let usage = null;
+    let idx = 1;
+    if (needsMetrics) metrics = results[idx++];
+    if (needsUsage) usage = results[idx];
     const member = (roster?.members || []).find((item) => item.user_id === userId);
     setText("teamMemberDetailTitle", member?.display_name || member?.email || "Member detail");
-  body.replaceChildren();
+    body.replaceChildren();
     const liveLine = document.createElement("p");
-    liveLine.textContent = live.online
-      ? `Live · ${live.stage || "idle"}${live.active_lead_name ? ` · ${live.active_lead_name}` : ""}`
-      : `Last seen · ${live.last_seen_at || "unknown"}`;
-    const stats = document.createElement("p");
-    const allTime = metrics.metrics?.all_time || {};
-    stats.textContent = `7-day metrics · ${allTime.dials ?? 0} dials · ${allTime.connected ?? 0} connects · ${allTime.booked ?? 0} booked`;
-    body.append(liveLine, stats);
+    liveLine.className = "team-detail-live";
+    const parts = [];
+    if (live.online) {
+      parts.push(`Live (${live.source || "session"})`, live.stage || "idle");
+      if (live.running) parts.push("dialing");
+      if (live.paused) parts.push("paused");
+      if (live.in_flight_count) parts.push(`${live.in_flight_count} in flight`);
+      if (live.active_lead_name) parts.push(live.active_lead_name);
+    } else {
+      parts.push("Offline", live.stage && live.stage !== "idle" ? `last stage ${live.stage}` : null);
+      parts.push(`last seen ${formatSeen(live.last_seen_at)}`);
+    }
+    liveLine.textContent = parts.filter(Boolean).join(" · ");
+    body.append(liveLine);
+    const session = live.session_stats || {};
+    if (live.online && (session.dials || session.conversations)) {
+      const sessionLine = document.createElement("p");
+      sessionLine.textContent = `This session · ${session.dials ?? 0} dials · ${session.conversations ?? 0} conversations`;
+      body.append(sessionLine);
+    }
+    if (metrics) {
+      const series = metrics.metrics?.series || [];
+      const totals = {
+        dials: sumMetricSeries(series, "dials"),
+        connected: sumMetricSeries(series, "connected"),
+        booked: sumMetricSeries(series, "booked"),
+        talk_seconds: sumMetricSeries(series, "talk_seconds"),
+      };
+      const stats = document.createElement("p");
+      const talkMin = Math.round((totals.talk_seconds || 0) / 60);
+      stats.textContent = `Last 7 days · ${totals.dials} dials · ${totals.connected} connects · ${totals.booked} booked · ${talkMin} talk min`;
+      body.append(stats);
+    }
+    if (usage) {
+      body.append(renderUsageTimeline(usage.events, usage.minutes || 60));
+    }
+    const updated = document.createElement("p");
+    updated.className = "team-detail-updated";
+    updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    body.append(updated);
     if (showPanel) detail.hidden = false;
   } catch (error) {
     showToast(error.message || "Could not load member detail.");
@@ -122,7 +268,11 @@ async function loadMemberDetail(userId, showPanel) {
 }
 
 export function renderTeam() {
-  if (S.dashboardTab !== "team" || !teamReady()) return;
+  if (S.dashboardTab !== "team" || !teamReady()) {
+    stopLivePolling();
+    return;
+  }
+  syncLivePolling();
   refreshRoster(false);
 }
 

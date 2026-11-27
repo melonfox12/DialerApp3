@@ -6,7 +6,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
 from _web.respond import HandlerMixin
-from features import ai_voice_routes, call_scripts, dialer, metrics, org, prospects, settings, team
+from features import ai_voice_routes, call_scripts, dialer, metrics, org, prospects, settings, team, usage_events
 from features.accounts import resolve_account
 from shared.config import read_env
 from shared.infra import debug_event
@@ -36,8 +36,21 @@ def get_auth_me(request):
     if user:
         payload.update(org.membership_for_auth(user))
     else:
-        payload.update({"org_id": "", "org_name": "", "role": "", "can_manage_team": False})
+        payload.update({
+            "org_id": "",
+            "org_name": "",
+            "role": "",
+            "status": "",
+            "can_manage_team": False,
+        })
     request.send_json(200, payload)
+
+
+def get_account_setup(request):
+    if not request.account:
+        request.send_json(401, {"error": "Sign in with Google to continue."})
+        return
+    request.send_json(200, org.account_setup_payload(request.runtime, request.account.dialer))
 
 
 def ingest_client_debug(request):
@@ -68,6 +81,7 @@ SYSTEM_ROUTES = [
     ("GET", "/api/auth/config", get_auth_config, "none"),
     ("GET", "/api/health", get_health, "none"),
     ("GET", "/api/auth/me", get_auth_me, "none"),
+    ("GET", "/api/account/setup", get_account_setup, "GET reads"),
     ("POST", "/api/debug", ingest_client_debug, "debug"),
 ]
 
@@ -78,6 +92,7 @@ FEATURE_ROUTES = (
     + dialer.ROUTES
     + call_scripts.ROUTES
     + team.ROUTES
+    + usage_events.ROUTES
     + ai_voice_routes.ROUTES
 )
 

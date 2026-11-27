@@ -91,3 +91,26 @@
 .team-detail-body p {
   margin: 0.35rem 0;
 }
+
+.team-usage-timeline {
+  margin-top: 0.75rem;
+}
+
+.team-usage-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 0.85rem;
+  color: var(--ink-secondary, #d0d6e0);
+}
+
+.team-usage-list li {
+  margin: 0.2rem 0;
+}
+
+.team-usage-list time {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.8rem;
+  color: var(--muted, #9ca3af);
+}

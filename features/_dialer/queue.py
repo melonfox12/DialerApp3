@@ -281,6 +281,12 @@ def start(state, priority_lead_id=None):
         view["client_call_token"] = agent_call["token"]
     elif ai_mode and ai_agent_id:
         threading.Thread(target=slots.fill_slots, args=(state,), daemon=True).start()
+    from features import usage_events
+
+    usage_events.record(state, "session_start", {
+        "queue_total": state.queue_total,
+        "pool_status": state.dial_pool_status,
+    })
     return view
 
 
@@ -529,6 +535,11 @@ def pause(state):
         timing._schedule_advance(state, remaining)
     if should_check_hours:
         slots._schedule_calling_window_check(state)
+    from features import usage_events
+
+    with state.lock:
+        paused = state.paused
+    usage_events.record(state, "session_pause" if paused else "session_resume", {})
     return projection.public_state(state)
 
 def stop(state):
@@ -564,6 +575,9 @@ def stop(state):
             rules._save_session(state)
     rules._flush_metrics(state)
     state.record_activity("Dialer stopped", "call")
+    from features import usage_events
+
+    usage_events.record(state, "session_stop", {})
     for call in calls:
         if call.get("call_uuid"):
             threading.Thread(target=twilio._hangup_call, args=(state, call["call_uuid"]), daemon=True).start()
