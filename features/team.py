@@ -3,7 +3,7 @@
 import time
 import urllib.parse
 
-from features import org, org_storage
+from features import app_usage, org, org_storage
 from features.metrics import SupabaseMetricsStore
 from shared.vocabulary import TEAM_PRESENCE_WRITE_SECONDS
 
@@ -19,6 +19,11 @@ def maybe_record_presence(runtime, dialer, live_payload):
     last = float(getattr(dialer, "_team_presence_at", 0) or 0)
     if now - last < TEAM_PRESENCE_WRITE_SECONDS:
         return
+    delta = (now - last) if last > 0 else 0.0
+    if not getattr(dialer, "_app_usage_state", None):
+        row = org_storage.get_presence(client, user_id)
+        dialer._app_usage_state = app_usage.state_from_presence(row) if row else app_usage.empty_state()
+    app_usage.apply_tick(dialer._app_usage_state, delta_seconds=delta)
     dialer._team_presence_at = now
     in_flight = live_payload.get("in_flight") if isinstance(live_payload, dict) else []
     org_storage.upsert_presence(client, user_id, org_id, {
@@ -27,6 +32,14 @@ def maybe_record_presence(runtime, dialer, live_payload):
         "stage": live_payload.get("stage") or "idle",
         "active_lead_id": live_payload.get("active_lead_id") or "",
         "in_flight_count": len(in_flight) if isinstance(in_flight, list) else 0,
+        "app_today_date": dialer._app_usage_state.get("app_today_date"),
+        "app_today_seconds": dialer._app_usage_state.get("app_today_seconds"),
+        "app_week_key": dialer._app_usage_state.get("app_week_key"),
+        "app_week_seconds": dialer._app_usage_state.get("app_week_seconds"),
+        "app_month_key": dialer._app_usage_state.get("app_month_key"),
+        "app_month_seconds": dialer._app_usage_state.get("app_month_seconds"),
+        "app_session_seconds": dialer._app_usage_state.get("app_session_seconds"),
+        "app_session_started_at": dialer._app_usage_state.get("app_session_started_at"),
     })
 
 
@@ -35,6 +48,16 @@ def _member_contact(client, user_id, member_row, profiles):
     email = profile.get("email") or member_row.get("invited_email") or ""
     display = profile.get("display_name") or email.split("@")[0] if email else "Team member"
     return {"email": email, "display_name": display}
+
+
+def _browser_live_account(runtime, user_id):
+    """In-memory dialer state only counts as online while the browser is still polling."""
+    if not runtime or not user_id:
+        return None
+    account = runtime.sessions.get(user_id)
+    if account and account.client_is_online():
+        return account
+    return None
 
 
 def _today_metrics(metrics_store):
@@ -55,18 +78,19 @@ def _roster_row(client, runtime, org_id, member_row, profiles, presence_by_user)
     presence = presence_by_user.get(user_id) or {}
     online = org.presence_is_online(presence.get("last_seen_at")) if user_id else False
     live = None
-    if user_id and runtime:
-        account = runtime.sessions.get(user_id)
-        if account:
-            view = account.dialer.live_state()
-            live = {
-                "stage": view.get("stage") or "idle",
-                "running": bool(view.get("running")),
-                "paused": bool(view.get("paused")),
-                "in_flight_count": len(view.get("in_flight") or []),
-                "active_lead_id": view.get("active_lead_id") or "",
-            }
-            online = True
+    live_dialer = None
+    account = _browser_live_account(runtime, user_id)
+    if account:
+        live_dialer = account.dialer
+        view = account.dialer.live_state()
+        live = {
+            "stage": view.get("stage") or "idle",
+            "running": bool(view.get("running")),
+            "paused": bool(view.get("paused")),
+            "in_flight_count": len(view.get("in_flight") or []),
+            "active_lead_id": view.get("active_lead_id") or "",
+        }
+        online = True
     row = {
         "user_id": user_id,
         "email": contact["email"],
@@ -81,6 +105,7 @@ def _roster_row(client, runtime, org_id, member_row, profiles, presence_by_user)
             "in_flight_count": (live or {}).get("in_flight_count", presence.get("in_flight_count") or 0),
             "last_seen_at": presence.get("last_seen_at") or "",
         },
+        "app_usage": app_usage.app_usage_for_view(presence, live_dialer),
     }
     if user_id and status == "active":
         metrics = SupabaseMetricsStore(client, user_id=user_id)
@@ -127,8 +152,8 @@ def member_live_payload(runtime, dialer, member_user_id):
     membership = getattr(dialer, "org_membership", None) or {}
     org.assert_can_view_member(client, dialer.account_user_id, membership, member_user_id)
     target = str(member_user_id)
-    account = runtime.sessions.get(target)
     presence = org_storage.list_presence_for_org(client, membership["org_id"]).get(target) or {}
+    account = _browser_live_account(runtime, target)
     if account:
         view = account.dialer.live_state()
         active = view.get("active_lead") or {}
@@ -143,6 +168,7 @@ def member_live_payload(runtime, dialer, member_user_id):
             "active_lead_id": view.get("active_lead_id") or "",
             "active_lead_name": active.get("name") or active.get("contact_name") or "",
             "session_stats": view.get("session_stats") or {},
+            "app_usage": app_usage.app_usage_for_view(presence, account.dialer),
         }
     return {
         "user_id": target,
@@ -156,6 +182,7 @@ def member_live_payload(runtime, dialer, member_user_id):
         "active_lead_name": "",
         "session_stats": {},
         "last_seen_at": presence.get("last_seen_at") or "",
+        "app_usage": app_usage.app_usage_for_view(presence),
     }
 
 

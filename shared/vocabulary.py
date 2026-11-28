@@ -272,6 +272,7 @@ ORG_MEMBER_STATUSES = ("active", "invited", "disabled")
 DEFAULT_ORG_NAME = "My team"
 TEAM_ONLINE_SECONDS = 90
 TEAM_PRESENCE_WRITE_SECONDS = 10
+APP_USAGE_MAX_TICK_SECONDS = 15
 USAGE_EVENT_KINDS = (
     "session_start",
     "session_stop",

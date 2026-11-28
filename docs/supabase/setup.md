@@ -28,6 +28,8 @@ After pulling a new version, re-run [`schema.sql`](./schema.sql) in the Supabase
 
 For manager/rep **Team** views, also apply [`migrations/202611232200_org_structure.sql`](./migrations/202611232200_org_structure.sql) if it is not already in your project (new installs include it at the end of `schema.sql`).
 
+For **browser app-time** on the Team roster (`App (UTC day)` column), run [`migrations/202611281200_dialer_presence_app_usage.sql`](./migrations/202611281200_dialer_presence_app_usage.sql) and, for week/month totals, [`migrations/202611281215_dialer_presence_app_usage_periods.sql`](./migrations/202611281215_dialer_presence_app_usage_periods.sql) (included in `schema.sql` for new installs).
+
 ## Organization / team (manager dashboard)
 
 1. Sign in once with your Google manager account.

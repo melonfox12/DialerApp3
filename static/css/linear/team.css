@@ -92,6 +92,29 @@
   margin: 0.35rem 0;
 }
 
+.team-app-usage {
+  margin-top: 0.65rem;
+}
+
+.team-app-usage-list {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.2rem 1rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+}
+
+.team-app-usage-list dt {
+  margin: 0;
+  color: var(--ink-secondary, #d0d6e0);
+}
+
+.team-app-usage-list dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .team-usage-timeline {
   margin-top: 0.75rem;
 }

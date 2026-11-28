@@ -74,6 +74,47 @@ function renderMemberScriptAnalytics(payload) {
   return section;
 }
 
+function formatAppMinutes(usage, online) {
+  const today = Number(usage?.app_minutes_today ?? 0);
+  const week = Number(usage?.app_minutes_week ?? 0);
+  const session = Number(usage?.app_minutes_session ?? 0);
+  if (online && session > 0) {
+    return `${today}m today · ${week}m wk · ${session}m live`;
+  }
+  return `${today}m today · ${week}m wk`;
+}
+
+function renderAppUsageBlock(app, online) {
+  const section = document.createElement("section");
+  section.className = "team-app-usage";
+  const heading = document.createElement("h4");
+  heading.className = "team-section-label";
+  heading.textContent = "Browser app time (UTC)";
+  section.append(heading);
+  const rows = [
+    ["This browser session", app?.app_minutes_session, online],
+    ["Today", app?.app_minutes_today, true],
+    ["This week (ISO)", app?.app_minutes_week, true],
+    ["This month", app?.app_minutes_month, true],
+  ];
+  const list = document.createElement("dl");
+  list.className = "team-app-usage-list";
+  for (const [label, minutes, show] of rows) {
+    if (!show && !Number(minutes)) continue;
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = `${Number(minutes ?? 0)} min`;
+    list.append(dt, dd);
+  }
+  section.append(list);
+  const note = document.createElement("p");
+  note.className = "form-footnote";
+  note.textContent = "Session resets when they leave the app (~90s without heartbeats). Today, week, and month keep adding.";
+  section.append(note);
+  return section;
+}
+
 function formatSeen(iso) {
   if (!iso) return "unknown";
   const seen = Date.parse(iso);
@@ -162,10 +203,13 @@ function renderTeamTable() {
     const activityCell = document.createElement("td");
     const stage = member.presence?.stage || "idle";
     activityCell.textContent = member.online ? stage : (stage === "idle" ? "—" : stage);
+    const appCell = document.createElement("td");
+    appCell.textContent = formatAppMinutes(member.app_usage, member.online);
+    appCell.title = "App minutes today and this week (UTC); live session when online";
     const todayCell = document.createElement("td");
     const today = member.today || {};
     todayCell.textContent = `${today.dials ?? 0} dials · ${today.connected ?? 0} connects · ${today.booked ?? 0} booked`;
-    row.append(nameCell, roleCell, statusCell, activityCell, todayCell);
+    row.append(nameCell, roleCell, statusCell, activityCell, appCell, todayCell);
     row.addEventListener("click", () => {
       if (!member.user_id) return;
       selectedUserId = member.user_id;
@@ -292,6 +336,10 @@ async function loadMemberDetail(userId, showPanel) {
     }
     liveLine.textContent = parts.filter(Boolean).join(" · ");
     body.append(liveLine);
+    const app = live.app_usage || member?.app_usage;
+    if (app) {
+      body.append(renderAppUsageBlock(app, live.online));
+    }
     const session = live.session_stats || {};
     if (live.online && (session.dials || session.conversations)) {
       const sessionLine = document.createElement("p");

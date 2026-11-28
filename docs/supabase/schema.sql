@@ -256,7 +256,15 @@ create table if not exists public.dialer_presence (
     paused boolean not null default false,
     stage text not null default 'idle',
     active_lead_id text not null default '',
-    in_flight_count integer not null default 0 check (in_flight_count >= 0)
+    in_flight_count integer not null default 0 check (in_flight_count >= 0),
+    app_today_date date not null default (timezone('utc', now()))::date,
+    app_today_seconds integer not null default 0 check (app_today_seconds >= 0),
+    app_week_key text not null default '',
+    app_week_seconds integer not null default 0 check (app_week_seconds >= 0),
+    app_month_key text not null default '',
+    app_month_seconds integer not null default 0 check (app_month_seconds >= 0),
+    app_session_seconds integer not null default 0 check (app_session_seconds >= 0),
+    app_session_started_at timestamptz
 );
 
 create index if not exists org_members_org_id_idx on public.org_members (org_id);

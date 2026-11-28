@@ -121,6 +121,48 @@ def add_member(client, org_id, *, user_id=None, role="rep", status="active", inv
     return _row(rows)
 
 
+_PRESENCE_APP_COLUMNS = (
+    "app_today_date",
+    "app_today_seconds",
+    "app_week_key",
+    "app_week_seconds",
+    "app_month_key",
+    "app_month_seconds",
+    "app_session_seconds",
+    "app_session_started_at",
+)
+_PRESENCE_SELECT = (
+    "user_id,org_id,last_seen_at,running,paused,stage,active_lead_id,in_flight_count,"
+    + ",".join(_PRESENCE_APP_COLUMNS)
+)
+
+
+def _missing_presence_app_columns(exc):
+    message = str(exc).lower()
+    return any(token in message for token in _PRESENCE_APP_COLUMNS)
+
+
+def get_presence(client, user_id):
+    if not client or not user_id:
+        return None
+    try:
+        rows = client.request("GET", "dialer_presence", {
+            "select": _PRESENCE_SELECT,
+            "user_id": f"eq.{user_id}",
+            "limit": "1",
+        }) or []
+    except OSError as exc:
+        if _missing_presence_app_columns(exc):
+            rows = client.request("GET", "dialer_presence", {
+                "select": "user_id,org_id,last_seen_at,running,paused,stage,active_lead_id,in_flight_count",
+                "user_id": f"eq.{user_id}",
+                "limit": "1",
+            }) or []
+        else:
+            raise
+    return _row(rows)
+
+
 def upsert_presence(client, user_id, org_id, fields):
     body = {
         "user_id": user_id,
@@ -132,20 +174,51 @@ def upsert_presence(client, user_id, org_id, fields):
         "active_lead_id": str(fields.get("active_lead_id") or ""),
         "in_flight_count": int(fields.get("in_flight_count") or 0),
     }
-    client.request(
-        "POST",
-        "dialer_presence",
-        {"on_conflict": "user_id"},
-        body,
-        "resolution=merge-duplicates,return=minimal",
-    )
+    if any(key in fields for key in _PRESENCE_APP_COLUMNS):
+        body.update({
+            "app_today_date": str(fields.get("app_today_date") or _iso_now())[:10],
+            "app_today_seconds": max(0, int(fields.get("app_today_seconds") or 0)),
+            "app_week_key": str(fields.get("app_week_key") or ""),
+            "app_week_seconds": max(0, int(fields.get("app_week_seconds") or 0)),
+            "app_month_key": str(fields.get("app_month_key") or ""),
+            "app_month_seconds": max(0, int(fields.get("app_month_seconds") or 0)),
+            "app_session_seconds": max(0, int(fields.get("app_session_seconds") or 0)),
+            "app_session_started_at": fields.get("app_session_started_at") or _iso_now(),
+        })
+    try:
+        client.request(
+            "POST",
+            "dialer_presence",
+            {"on_conflict": "user_id"},
+            body,
+            "resolution=merge-duplicates,return=minimal",
+        )
+    except OSError as exc:
+        if not _missing_presence_app_columns(exc):
+            raise
+        lean = {key: value for key, value in body.items() if key not in _PRESENCE_APP_COLUMNS}
+        client.request(
+            "POST",
+            "dialer_presence",
+            {"on_conflict": "user_id"},
+            lean,
+            "resolution=merge-duplicates,return=minimal",
+        )
 
 
 def list_presence_for_org(client, org_id):
-    rows = client.request("GET", "dialer_presence", {
-        "select": "user_id,org_id,last_seen_at,running,paused,stage,active_lead_id,in_flight_count",
-        "org_id": f"eq.{org_id}",
-    }) or []
+    try:
+        rows = client.request("GET", "dialer_presence", {
+            "select": _PRESENCE_SELECT,
+            "org_id": f"eq.{org_id}",
+        }) or []
+    except OSError as exc:
+        if not _missing_presence_app_columns(exc):
+            raise
+        rows = client.request("GET", "dialer_presence", {
+            "select": "user_id,org_id,last_seen_at,running,paused,stage,active_lead_id,in_flight_count",
+            "org_id": f"eq.{org_id}",
+        }) or []
     return {str(row["user_id"]): row for row in rows if row.get("user_id")}
 
 

@@ -13,7 +13,7 @@ from features._prospects.dial_records import DialRecordsStore
 from features.prospects import ProspectStore
 from features.settings import load_app_settings, save_app_settings
 from shared.config import CRM_PATH, ENV_PATH, METRICS_PATH, PUBLIC_API_PATHS, read_env
-from shared.infra import SupabaseClient
+from shared.infra import SupabaseClient, utc_now
 
 
 class Account:
@@ -23,6 +23,16 @@ class Account:
         self.dialer = dialer
         self.dial_archive = dial_archive
         self.dial_records = dial_records
+        self.last_client_at = utc_now().isoformat()
+
+    def touch_client(self):
+        """Last authenticated API request from this user's browser."""
+        self.last_client_at = utc_now().isoformat()
+
+    def client_is_online(self):
+        from features import org
+
+        return org.presence_is_online(self.last_client_at)
 
 
 class AppRuntime:
@@ -176,4 +186,6 @@ def resolve_account(runtime, path, authorization):
     user = runtime.client.auth_user(token)
     if not user:
         return None, {"error": "Sign in with Google to continue."}
-    return runtime.session_for(user), None
+    account = runtime.session_for(user)
+    account.touch_client()
+    return account, None
