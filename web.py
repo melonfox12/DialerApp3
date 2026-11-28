@@ -1,12 +1,14 @@
 """HTTP glue: tracing, static files, page assembly, and the route table."""
 
+import inspect
 import json
 import traceback
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
+from _web.hooks import dispatch_twilio_hook
 from _web.respond import HandlerMixin
-from features import ai_voice_routes, call_scripts, dialer, metrics, org, prospects, settings, team, usage_events
+from features import ai_voice_routes, call_scripts, dialer, metrics, org, prospects, script_analytics, settings, team, usage_events
 from features.accounts import resolve_account
 from shared.config import read_env
 from shared.infra import debug_event
@@ -93,6 +95,7 @@ FEATURE_ROUTES = (
     + call_scripts.ROUTES
     + team.ROUTES
     + usage_events.ROUTES
+    + script_analytics.ROUTES
     + ai_voice_routes.ROUTES
 )
 
@@ -109,6 +112,26 @@ def match_route(method, path):
         if params is not None:
             return handler, profile, params
     return None
+
+
+def _route_kwargs(handler, params):
+    if not params:
+        return {}
+    kwargs = dict(params)
+    sig = inspect.signature(handler)
+    if "user_id" in kwargs and "member_user_id" in sig.parameters and "member_user_id" not in kwargs:
+        kwargs["member_user_id"] = kwargs.pop("user_id")
+    elif "user_id" in kwargs and "member_user_id" in sig.parameters:
+        kwargs["member_user_id"] = kwargs["user_id"]
+    return kwargs
+
+
+def _call_get_handler(handler, request, params):
+    kwargs = _route_kwargs(handler, params)
+    if kwargs:
+        handler(request, **kwargs)
+    else:
+        handler(request)
 
 
 def _match_pattern(pattern, path):
@@ -151,6 +174,21 @@ def request_refusal(method, path, headers, port):
 
 
 class AppHandler(HandlerMixin, BaseHTTPRequestHandler):
+    def serve_twilio_hook(self, body_values=None):
+        path = self._trace_path
+        if not path.startswith("/hooks"):
+            return False
+        status, content_type, content = dispatch_twilio_hook(
+            self.runtime, self.command, self.path, self.headers, body_values
+        )
+        body = content.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        return True
+
     def refuse_untrusted(self):
         refusal = request_refusal(self.command, self._trace_path, self.headers, self.server.server_address[1])
         if refusal is None:
@@ -179,6 +217,8 @@ class AppHandler(HandlerMixin, BaseHTTPRequestHandler):
     def do_GET(self):
         self.begin_trace()
         path = self._trace_path
+        if self.serve_twilio_hook():
+            return
         if self.refuse_untrusted():
             return
         if path == "/api/auth/config":
@@ -215,15 +255,25 @@ class AppHandler(HandlerMixin, BaseHTTPRequestHandler):
             return
         if profile in ("GET reads", "bridge"):
             try:
-                handler(self)
+                _call_get_handler(handler, self, _params)
             except OSError as exc:
                 self.report_storage_error(exc)
             return
-        handler(self)
+        _call_get_handler(handler, self, _params)
 
     def do_POST(self):
         self.begin_trace()
         path = self._trace_path
+        if path.startswith("/hooks"):
+            length = int(self.headers.get("Content-Length", "0"))
+            if length > 256 * 1024:
+                self.send_response(413)
+                self.end_headers()
+                return
+            raw = self.rfile.read(length).decode("utf-8", errors="replace") if length else ""
+            body_values = urllib.parse.parse_qs(raw, keep_blank_values=True) if raw else None
+            if self.serve_twilio_hook(body_values):
+                return
         if self.refuse_untrusted():
             return
         if path == "/api/debug":
@@ -246,7 +296,8 @@ class AppHandler(HandlerMixin, BaseHTTPRequestHandler):
                 return
             handler, _profile, _params = found
             if handler in (prospects.post_lead, prospects.post_fields, prospects.post_pipeline_step, prospects.post_save_pipeline_settings, settings.post_settings, dialer.post_timezone, dialer.post_status, dialer.post_pass_next,
-                           dialer.post_call_outcome, dialer.post_dials_record_snapshot, metrics.post_goal, metrics.post_booking, call_scripts.post_call_script):
+                           dialer.post_call_outcome, dialer.post_dials_record_snapshot, metrics.post_goal, metrics.post_booking, call_scripts.post_call_script,
+                           team.post_invite, usage_events.post_tab_focus):
                 handler(self, self.read_json(body))
             elif handler in (prospects.post_import, dialer.post_dials_import):
                 handler(self, body)

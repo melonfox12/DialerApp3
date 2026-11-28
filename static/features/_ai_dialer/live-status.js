@@ -56,7 +56,7 @@ export function renderAiLiveStatus() {
   const stop = byId("aiDialerAgent-stopButton");
   if (stop) {
     stop.hidden = stage === "idle" && !state.running;
-    stop.disabled = !state.running || S.voiceConnectBusy;
+    stop.disabled = !state.running;
   }
   if (start) start.hidden = false;
 }

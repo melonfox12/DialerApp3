@@ -5,8 +5,8 @@ import { renderCallerPool, renderTable } from "./registry.js";
 import { render } from "./render.js";
 import { S } from "./state.js";
 
-const DASHBOARD_TABS = ["dialer", "aiDialerAgent", "performance", "team", "pipeline", "workflow", "prospects", "pool", "dials"];
-const PRIMARY_DASHBOARD_TABS = ["dialer", "prospects", "pipeline"];
+const DASHBOARD_TABS = ["dialer", "aiDialerAgent", "performance", "team", "analytics", "pipeline", "workflow", "prospects", "pool", "dials"];
+const PRIMARY_DASHBOARD_TABS = ["dialer", "prospects", "pipeline", "analytics"];
 const LOCKED_DASHBOARD_TABS = ["aiDialerAgent", "performance", "workflow", "pool", "dials"];
 const TAB_ORDER_KEY = "prospect-desk-sidebar-order";
 const TAB_ACTIVE_KEY = "prospect-desk-dashboard-tab";
@@ -38,6 +38,7 @@ const TAB_BUTTONS = {
   aiDialerAgent: "aiDialerAgentTabButton",
   performance: "performanceTabButton",
   team: "teamTabButton",
+  analytics: "analyticsTabButton",
   pipeline: "pipelineTabButton",
   workflow: "workflowTabButton",
   prospects: "prospectsTabButton",
@@ -49,6 +50,7 @@ const TAB_TITLES = {
   aiDialerAgent: "AI Dialer Agent",
   performance: "Performance",
   team: "Team",
+  analytics: "Analytics",
   pipeline: "Pipeline",
   workflow: "Workflow",
   prospects: "Prospects",
@@ -350,7 +352,8 @@ export function setDashboardTab(name, moveFocus = false) {
   byId("aiDialerAgentTabPanel").hidden = S.dashboardTab !== "aiDialerAgent";
   byId("metricsPanel").hidden = S.dashboardTab !== "performance";
   byId("teamPanel").hidden = S.dashboardTab !== "team";
-  for (const tab of ["performance", "team", "pipeline", "workflow", "prospects", "pool", "dials"]) {
+  byId("analyticsPanel").hidden = S.dashboardTab !== "analytics";
+  for (const tab of ["performance", "team", "analytics", "pipeline", "workflow", "prospects", "pool", "dials"]) {
     byId(`${tab}TabPanel`).hidden = S.dashboardTab !== tab;
   }
   setText("pageTitle", TAB_TITLES[S.dashboardTab]);
@@ -379,6 +382,9 @@ export function setDashboardTab(name, moveFocus = false) {
   }
   if (S.dashboardTab === "team") {
     import("../features/team.js").then((module) => module.renderTeam());
+  }
+  if (S.dashboardTab === "analytics") {
+    import("../features/analytics.js").then((module) => module.renderAnalytics());
   }
   if (moveFocus) selectedButton.focus();
   maybeRecordTabFocus(S.dashboardTab);

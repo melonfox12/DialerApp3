@@ -1,0 +1,30 @@
+            <section id="analyticsPanel" class="metrics-panel dialer-run-panel" aria-labelledby="analyticsTitle" hidden>
+              <div id="analyticsTabPanel" class="dashboard-tab-panel analytics-tab-panel" role="tabpanel" aria-labelledby="analyticsTabButton" hidden>
+                <div class="dialer-document analytics-document">
+                  <header class="analytics-header">
+                    <div>
+                      <h2 id="analyticsTitle">Script analytics</h2>
+                      <p id="analyticsSubjectLine" class="analytics-subject"></p>
+                    </div>
+                    <p id="analyticsUpdated" class="analytics-updated" aria-live="polite"></p>
+                  </header>
+                  <div class="analytics-summary" id="analyticsTotals" hidden></div>
+                  <table class="data-table analytics-table" id="analyticsTable">
+                    <thead>
+                      <tr>
+                        <th scope="col">Industry</th>
+                        <th scope="col">Prospect type</th>
+                        <th scope="col">Variation</th>
+                        <th scope="col">Dials</th>
+                        <th scope="col">Connects</th>
+                        <th scope="col">Conversations</th>
+                        <th scope="col">Booked</th>
+                        <th scope="col">Connect %</th>
+                      </tr>
+                    </thead>
+                    <tbody id="analyticsTableBody"></tbody>
+                  </table>
+                  <p id="analyticsEmpty" class="analytics-empty" hidden>No script-tagged dials in this window yet. Dials stamp your active call script when they start.</p>
+                </div>
+              </div>
+            </section>

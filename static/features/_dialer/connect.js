@@ -114,7 +114,7 @@ export async function connectBrowserCall(clientCallToken, { freshDevice = false 
       debugEvent("error", "mic fallback", errorText(error, "Microphone permission failed."));
       permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     }
-    permissionStream.getTracks().forEach((track) => track.stop());
+    permissionStream?.getTracks().forEach((track) => track?.stop());
     await refreshAudioDevices();
     const device = await createVoiceDevice({ fresh: freshDevice });
     if (generation !== connectGeneration) {

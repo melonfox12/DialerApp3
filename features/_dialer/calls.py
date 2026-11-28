@@ -216,6 +216,19 @@ def _cancel_call(state, call):
     if call_uuid:
         threading.Thread(target=twilio._hangup_call, args=(state, call_uuid), daemon=True).start()
 
+def _active_script_fields(state):
+    store = getattr(state, "call_scripts_store", None)
+    user_id = getattr(state, "account_user_id", None)
+    if not store:
+        return {}
+    prefs = store.load_prefs(user_id)
+    return {
+        "script_industry": prefs.get("industry") or "",
+        "script_prospect_type": prefs.get("prospect_type") or "",
+        "script_variation": prefs.get("variation"),
+    }
+
+
 def _dial_record(call, duration, answered_by=None):
     """The one call-log entry for a finished dial. It replaces the entry written at dial time."""
     answered = answered_by or call.get("answered_by") or ""
@@ -232,6 +245,9 @@ def _dial_record(call, duration, answered_by=None):
         # Connected means the agent was on the line with the prospect, not voicemail or a dead line.
         "connected": bool(call.get("picked_up")) and str(answered) != "voicemail",
         "outcome": call.get("outcome"),
+        "script_industry": call.get("script_industry") or "",
+        "script_prospect_type": call.get("script_prospect_type") or "",
+        "script_variation": call.get("script_variation"),
     }
 
 def _new_call(state, kind, lead, slot_index=None):
@@ -262,6 +278,7 @@ def _new_call(state, kind, lead, slot_index=None):
     voice_session.attach_call_voice_defaults(state, call)
     if slot_index is not None:
         call["slot_index"] = int(slot_index)
+    call.update(_active_script_fields(state))
     state.calls[token] = call
     _watch_token(state, token)
     if kind == "prospect":
@@ -272,6 +289,7 @@ def _new_call(state, kind, lead, slot_index=None):
             rules._save_session(state)
         if lead and lead.get("id"):
             try:
+                script_fields = _active_script_fields(state)
                 state.crm.append_call_log(lead["id"], {
                     "id": token,
                     "started_at": call["created_at"],
@@ -280,6 +298,7 @@ def _new_call(state, kind, lead, slot_index=None):
                     "answered_by": "",
                     "duration_seconds": 0,
                     "transcript_lines": 0,
+                    **script_fields,
                 })
             except (KeyError, ValueError, OSError):
                 pass

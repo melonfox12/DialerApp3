@@ -9,7 +9,7 @@ export function renderDialerControls(stage) {
     start.hidden = stage !== "idle";
   }
   for (const stop of dialerEls("stopButton")) {
-    stop.disabled = !state.running || S.voiceConnectBusy;
+    stop.disabled = !state.running;
     stop.hidden = stage === "idle";
   }
   humanDialerPanel()?.querySelector(".dialer-controls")?.setAttribute("data-controls", stage);

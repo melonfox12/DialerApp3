@@ -3,6 +3,7 @@ import { apiJson } from './helpers';
 
 test.describe('Account setup API', () => {
   test('GET /api/account/setup returns onboarding shape in local mode', async ({ request }) => {
+    test.skip(process.env.E2E_SERVER === 'existing', 'Isolated local JSON server only (omit E2E_SUPABASE=1)');
     const { response, data } = await apiJson<{
       storage: string;
       signed_in: boolean;
@@ -27,9 +28,14 @@ test.describe('Account setup API', () => {
     expect(data).toHaveProperty('can_manage_team');
   });
 
-  test('rejects setup without session when Supabase auth required', async ({ request }) => {
-    test.skip(process.env.E2E_SERVER !== 'existing', 'Only applies when testing against Supabase server');
-    const { response } = await request.get('/api/account/setup');
-    expect([401, 403]).toContain(response.status());
+  test('rejects setup without session when Supabase auth required', async ({ playwright, baseURL }) => {
+    test.skip(process.env.E2E_SERVER !== 'existing', 'Set E2E_SUPABASE=1 in .env (and run dialer.py on :8000)');
+    const anonymous = await playwright.request.newContext({ baseURL });
+    try {
+      const response = await anonymous.get('/api/account/setup');
+      expect([401, 403]).toContain(response.status());
+    } finally {
+      await anonymous.dispose();
+    }
   });
 });

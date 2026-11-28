@@ -1,6 +1,6 @@
 # Playwright E2E results
 
-- **Date:** 2026-11-26
+- **Date:** 2026-11-27 (latest full `e2e/` run)
 - **Commit range:** `7392c7c` (dialer page changes) → `09e796e` (HEAD), plus **uncommitted** working-tree changes
 - **Runner:** `npx playwright test e2e/<spec>.spec.ts` (Chromium, `scripts/e2e_server.py` local JSON mode unless `E2E_SERVER=existing`)
 - **Env vars:** `E2E_ACCESS_TOKEN` / `E2E_MANAGER_ACCESS_TOKEN` (Supabase manager UI tests), `E2E_SERVER=existing` (optional, uses `python dialer.py`)
@@ -21,22 +21,16 @@
 | 1 No-answer button | `e2e/no-answer-disposition.spec.ts` | 4 | 4 | 0 | 0 | **Pass** |
 | 2 Account setup API | `e2e/account-setup.spec.ts` | 3 | 2 | 0 | 1 | **Pass** (1 skipped: Supabase-only) |
 | 3 Team live detail | `e2e/team-live-detail.spec.ts` | 3 | 2 | 0 | 1 | **Pass** (1 skipped: needs token) |
-| 4 Usage events | `e2e/usage-events.spec.ts` | 4 | 0 | 4 | 0 | **Fail** (APP BUG) |
+| 4 Usage events | `e2e/usage-events.spec.ts` | 4 | 4 | 0 | 0 | **Pass** (after `web.py` dispatch fix) |
+| 5 Script analytics | `e2e/script-analytics.spec.ts` | 4 | 3 | 0 | 1 | **Pass** (1 skipped: Supabase-only) |
+
+**Latest suite:** `E2E_PORT=8010` + `E2E_SERVER=local` → **16 tests, 14 passed, 2 skipped** (manager team + one account-setup skip).
 
 ## Failure details
 
-### Change 4 — `POST /api/usage/tab` (all usage specs that hit this route)
+### Change 4 — fixed in app (2026-11-27)
 
-| Field | Detail |
-|-------|--------|
-| **Tested** | Tab focus beacon returns HTTP 204 in local mode |
-| **Expected** | `204 No Content` |
-| **Actual** | `502` with body `post_tab_focus() missing 1 required positional argument: 'data'` |
-| **Classification** | **APP BUG** |
-| **Cause** | `web.py` `do_POST` only passes JSON body to handlers in an explicit allowlist; `usage_events.post_tab_focus(request, data)` is invoked as `handler(self)` |
-| **Suspected fix** | Add `usage_events.post_tab_focus` to the `handler(self, self.read_json(body))` group in `web.py` `do_POST` |
-
-Affected tests: all four cases in `usage-events.spec.ts` (POST 502; GET member usage drops connection).
+- `web.py`: `POST /api/usage/tab` passes JSON body; `GET /api/team/members/{user_id}/*` passes path params (`user_id` → `member_user_id`).
 
 Initial run of change 1 failed because Playwright started the real Supabase-backed `dialer.py` (login gate). **TEST FIX:** `scripts/e2e_server.py` + `openAppShell()` auth-config stub for local mode.
 
@@ -50,17 +44,7 @@ _None._
 
 ### High
 
-1. **`GET /api/team/members/{user_id}/*` path params not passed**
-   - **Description:** `get_member_metrics`, `get_member_live`, and `get_member_usage` crash; team member detail API calls fail.
-   - **Repro:** `GET /api/team/members/<uuid>/live` (or `/metrics`, `/usage`).
-   - **Cause:** `web.py` `do_GET` calls `handler(self)` and discards `_params` from `match_route`.
-   - **Suggested fix:** For `profile == "GET reads"`, call `handler(self, **params)` when params are non-empty (e.g. `user_id`).
-
-2. **`POST /api/usage/tab` route dispatch**
-   - **Description:** Server returns 502; tab-focus telemetry never runs from the browser.
-   - **Repro:** `POST /api/usage/tab` with `{"tab":"dialer"}` and `Content-Type: application/json`.
-   - **Cause:** `web.py` `do_POST` (~line 248) omitting `usage_events.post_tab_focus` from JSON-body handlers.
-   - **Suggested fix:** Register handler in the same tuple as `team.post_invite`, etc.
+_None (route dispatch fixed 2026-11-27)._
 
 ### Medium
 
@@ -85,7 +69,8 @@ _None._
 ## How to re-run
 
 ```bash
-# Default: isolated local server on :8000
+# Default: isolated local server (use :8010 if dialer.py already on :8000)
+$env:E2E_PORT='8010'; $env:E2E_BASE_URL='http://127.0.0.1:8010'
 npx playwright test e2e/no-answer-disposition.spec.ts
 
 # Against your real Supabase-backed server (must already listen on :8000)

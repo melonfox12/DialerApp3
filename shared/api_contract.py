@@ -210,6 +210,9 @@ CALL_LOG_ENTRY_KEYS = (
     "ended_at",
     "id",
     "outcome",
+    "script_industry",
+    "script_prospect_type",
+    "script_variation",
     "started_at",
     "transcript_lines",
 )

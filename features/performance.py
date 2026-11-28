@@ -178,6 +178,9 @@ def call_records(leads):
                 "transcript_lines": max(0, transcript_lines),
                 "answered_by": entry.get("answered_by") or "",
                 "outcome": outcome if outcome in CALL_OUTCOME_KEYS else None,
+                "script_industry": entry.get("script_industry") or "",
+                "script_prospect_type": entry.get("script_prospect_type") or "",
+                "script_variation": entry.get("script_variation"),
             })
     records.sort(key=lambda record: record["at"])
     return records

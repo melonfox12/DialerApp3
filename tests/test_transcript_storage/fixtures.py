@@ -29,6 +29,10 @@ class FakeSupabaseClient:
             self.leads[row["id"]] = row
             self.user_ids[row["id"]] = user_id
 
+    @property
+    def users(self):
+        return self.user_ids
+
     def select_all(self, resource, params):
         if resource != "prospects":
             raise AssertionError(f"Unexpected resource: {resource}")

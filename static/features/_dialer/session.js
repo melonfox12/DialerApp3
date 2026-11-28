@@ -26,7 +26,7 @@ export async function startDialing() {
     showToast(errorText(error, "Could not start dialing."), true);
     if (!sessionStarted) openSettings();
   } finally {
-    if (!state.running) S.voiceConnectBusy = false;
+    S.voiceConnectBusy = false;
     for (const button of dialerEls("startButton")) button.disabled = state.running;
   }
 }

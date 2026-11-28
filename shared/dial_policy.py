@@ -64,7 +64,16 @@ def normalize_phone(raw):
 
 
 def location_text(lead, key):
-    return str((lead or {}).get(key) or "").strip()
+    direct = str((lead or {}).get(key) or "").strip()
+    if direct:
+        return direct
+    fields = (lead or {}).get("fields") or {}
+    if not isinstance(fields, dict):
+        return ""
+    for label, value in fields.items():
+        if str(label or "").strip().lower() == str(key).lower() and str(value or "").strip():
+            return str(value).strip()
+    return ""
 
 
 def _folded(value):
@@ -289,14 +298,22 @@ def dial_times(lead):
     return [line.get("timestamp") or "" for line in (lead.get("transcript") or [])]
 
 
+def _lead_contact_name(lead):
+    return lead.get("contact_name") or lead.get("name")
+
+
+def _lead_company(lead):
+    return lead.get("company") or lead.get("business")
+
+
 def contact_keys(lead):
     """Phone and person keys used to dedupe the auto-dial pool."""
     keys = set()
     phone = normalize_phone(lead.get("phone"))
     if phone:
         keys.add(("phone", phone))
-    name = _folded(lead.get("contact_name"))
-    business = _folded(lead.get("company"))
+    name = _folded(_lead_contact_name(lead))
+    business = _folded(_lead_company(lead))
     city = _folded(location_text(lead, "city"))
     state_name = _folded(location_text(lead, "state"))
     if name and (business or city or state_name):
@@ -306,7 +323,7 @@ def contact_keys(lead):
 
 def identity_key(lead):
     """Name plus location for callback sync between duplicate imports."""
-    name = _folded(lead.get("contact_name"))
+    name = _folded(_lead_contact_name(lead))
     if not name:
         return None
     city = _folded(location_text(lead, "city"))
@@ -384,11 +401,20 @@ def matches_dial_pool(lead, pool_status, now=None):
     return status == pool_status
 
 
+def _callback_timer_migration_done(lead):
+    if lead.get(CALLBACK_TIMER_MIGRATION_FIELD):
+        return True
+    fields = (lead or {}).get("fields")
+    if isinstance(fields, dict) and fields.get(CALLBACK_TIMER_MIGRATION_FIELD):
+        return True
+    return False
+
+
 def apply_callback_timer_migration_to_lead(lead, now):
     """One-time per lead: shift open callbacks forward after the 48h → 2h policy change."""
     if lead.get("status") != "dialed" or not lead.get("scheduled_until"):
         return False
-    if lead.get(CALLBACK_TIMER_MIGRATION_FIELD):
+    if _callback_timer_migration_done(lead):
         return False
     due = callback_due(lead)
     lead[CALLBACK_TIMER_MIGRATION_FIELD] = True

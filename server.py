@@ -30,7 +30,11 @@ def serve():
     threading.Thread(target=hook_server.serve_forever, name="twilio-callback-server", daemon=True).start()
     print(f"CRM web app: http://{APP_HOST}:{APP_PORT}", flush=True)
     print(f"Persistent storage: {runtime.storage_name}", flush=True)
-    print(f"Twilio callback server: http://{HOOK_HOST}:{HOOK_PORT} (expose this port with HTTPS)", flush=True)
+    print(
+        f"Twilio callbacks: /hooks on http://{APP_HOST}:{APP_PORT} (use this URL in PUBLIC_BASE_URL via ngrok)",
+        flush=True,
+    )
+    print(f"Twilio callback server (legacy): http://{HOOK_HOST}:{HOOK_PORT}", flush=True)
     print("Debug log: debug-session.log (clicks, requests, dialer events, errors)", flush=True)
     try:
         app_server.serve_forever()

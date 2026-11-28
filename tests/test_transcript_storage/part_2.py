@@ -7,15 +7,8 @@ from tests.test_transcript_storage.fixtures import prospect
 class Part2:
     def test_snapshot_uses_memory_after_the_first_load(self):
         client = FakeSupabaseClient(prospect(), user_id="user-a")
-        client.loads = 0
-        original = client.select_all
-
-        def counting(resource, params):
-            client.loads += 1
-            return original(resource, params)
-
-        client.select_all = counting
         crm = ProspectStore(client=client, user_id="user-a")
+        self.assertEqual(client.loads, 1)
         crm.snapshot()
         crm.snapshot()
         self.assertEqual(client.loads, 1)

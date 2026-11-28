@@ -14,16 +14,16 @@ import { setStartNewSession } from "./_dialer/summary.js";
 import { bindVoice } from "./_dialer/_voice/connect.js";
 
 stageEffects.playCue = playCue;
-stageEffects.match = (lead) => arcadeSensory.match(lead);
-stageEffects.reset = (quiet) => arcadeSensory.reset(quiet);
-stageEffects.stop = () => arcadeSensory.stop();
-stageEffects.startSpin = (key) => arcadeSensory.startSpin(key);
+stageEffects.match = (lead) => arcadeSensory?.match(lead);
+stageEffects.reset = (quiet) => arcadeSensory?.reset(quiet);
+stageEffects.stop = () => arcadeSensory?.stop();
+stageEffects.startSpin = (key) => arcadeSensory?.startSpin(key);
 stageEffects.goalReached = () => {
-  if (arcadeSensory.preferences.enabled) arcadeSensory.burstParticles();
+  if (arcadeSensory?.preferences.enabled) arcadeSensory.burstParticles();
 };
 stageEffects.booked = (lead) => {
   celebrateBooked();
-  arcadeSensory.match(lead);
+  arcadeSensory?.match(lead);
 };
 
 setStartNewSession(startDialing);

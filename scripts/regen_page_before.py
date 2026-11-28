@@ -16,6 +16,7 @@ parts = (
     STATIC / "features" / "session-summary-dialog.html",
     STATIC / "features" / "performance.html",
     STATIC / "features" / "team.html",
+    STATIC / "features" / "analytics.html",
     STATIC / "features" / "pipeline.html",
     STATIC / "features" / "workflow.html",
     STATIC / "features" / "prospects.html",

@@ -10,7 +10,6 @@ LEAD_TIERS = ("A", "B", "C", "D")
 
 REMOVED_HEADER_TOKENS = frozenset({
     "score",
-    "phonenumber",
     "websitephone",
     "phonesource",
     "websitephonesource",
@@ -172,6 +171,7 @@ _HEADER_TO_FIELD = {
     "contact": "contact_name",
     "company": "company",
     "business": "company",
+    "businessname": "company",
     "organization": "company",
     "organisation": "company",
     "officemanager": "office_manager",

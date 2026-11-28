@@ -251,6 +251,22 @@ def _assign_field(lead, field, value):
         lead[field] = _text(value, limit=2000 if field == "score_reasons" else 500)
 
 
+def _manual_transcript(value):
+    if value is None or value == "":
+        return []
+    if isinstance(value, list):
+        return [dict(item) for item in value]
+    text = _text(value, limit=2000)
+    if not text:
+        return []
+    return [{
+        "id": "",
+        "timestamp": utc_now().isoformat(),
+        "speaker": "Prospect",
+        "text": text,
+    }]
+
+
 def _coerce_bool_field(value):
     if value is None or value == "":
         return None
@@ -334,6 +350,8 @@ def build_manual_lead(payload, known_phones=()):
         lead["scheduled_until"] = (utc_now() + timedelta(hours=MANUAL_CALLBACK_HOURS)).isoformat()
     if status == "booked":
         lead["booked_at"] = utc_now().isoformat()
+    if "transcript" in payload:
+        lead["transcript"] = _manual_transcript(payload.get("transcript"))
     return lead
 
 

@@ -2,9 +2,13 @@ import type { APIRequestContext, Page } from '@playwright/test';
 
 /** Local E2E server skips Google gate; Supabase mode needs E2E_ACCESS_TOKEN + extraHTTPHeaders. */
 export async function openAppShell(page: Page): Promise<void> {
+  const token = managerAccessToken();
   await page.route('**/api/auth/config', async (route) => {
-    const useGoogle = process.env.E2E_SERVER === 'existing' && Boolean(managerAccessToken());
-    if (useGoogle) {
+    const useRealGoogle =
+      process.env.E2E_SERVER === 'existing'
+      && process.env.E2E_REAL_GOOGLE === '1'
+      && Boolean(token);
+    if (useRealGoogle) {
       await route.continue();
       return;
     }
@@ -16,6 +20,38 @@ export async function openAppShell(page: Page): Promise<void> {
   });
   await page.goto('/');
   await expectAppReady(page);
+  if (token) {
+    await syncManagerChromeFromApi(page);
+  }
+}
+
+/** After shell boot (google gate off), apply /api/auth/me from E2E_ACCESS_TOKEN. */
+export async function syncManagerChromeFromApi(page: Page): Promise<void> {
+  const token = managerAccessToken();
+  if (!token) return;
+  const ok = await page.evaluate(async (accessToken) => {
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) {
+      return { ok: false, status: res.status, body: await res.text() };
+    }
+    const me = await res.json();
+    const { S } = await import('/static/core.js');
+    S.googleAuthEnabled = true;
+    S.accessToken = accessToken;
+    S.canManageTeam = Boolean(me.can_manage_team);
+    S.orgRole = me.role || '';
+    S.orgId = me.org_id || '';
+    const { syncTeamChrome } = await import('/static/features/team.js');
+    syncTeamChrome();
+    const { render } = await import('/static/core.js');
+    render();
+    return { ok: true, canManageTeam: S.canManageTeam };
+  }, token);
+  if (!ok?.ok) {
+    throw new Error(`syncManagerChromeFromApi failed: ${JSON.stringify(ok)}`);
+  }
 }
 
 export async function expectAppReady(page: Page): Promise<void> {

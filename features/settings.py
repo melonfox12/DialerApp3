@@ -229,10 +229,18 @@ def save_settings(env_path, account_values, account_user_id, data, save_remote=N
         "PUBLIC_BASE_URL": str(data.get("public_base_url", "")).rstrip("/"),
         **parsed,
     }
+    if not updates["TWILIO_ACCOUNT_SID"]:
+        updates["TWILIO_ACCOUNT_SID"] = current.get("TWILIO_ACCOUNT_SID", "")
     if not updates["TWILIO_AUTH_TOKEN"]:
         updates["TWILIO_AUTH_TOKEN"] = current.get("TWILIO_AUTH_TOKEN", "")
+    if not updates["TWILIO_API_KEY"]:
+        updates["TWILIO_API_KEY"] = current.get("TWILIO_API_KEY", "")
     if not updates["TWILIO_API_SECRET"]:
         updates["TWILIO_API_SECRET"] = current.get("TWILIO_API_SECRET", "")
+    if not updates["TWILIO_TWIML_APP_SID"]:
+        updates["TWILIO_TWIML_APP_SID"] = current.get("TWILIO_TWIML_APP_SID", "")
+    if not updates["PUBLIC_BASE_URL"]:
+        updates["PUBLIC_BASE_URL"] = current.get("PUBLIC_BASE_URL", "")
     if not updates.get("AI_BRIDGE_SECRET"):
         updates["AI_BRIDGE_SECRET"] = current.get("AI_BRIDGE_SECRET", "")
     if not updates.get("CARTESIA_API_KEY"):
@@ -274,9 +282,25 @@ def load_app_settings(client, user_id=None):
 
 
 def save_app_settings(client, stored_values, user_id=None):
+    row_id = str(user_id or SETTINGS_ROW_ID)
+    existing_data = {}
+    try:
+        rows = client.request(
+            "GET",
+            "dialer_settings",
+            {"id": f"eq.{row_id}", "select": "data"},
+        )
+        if rows and isinstance(rows[0], dict) and isinstance(rows[0].get("data"), dict):
+            existing_data = rows[0]["data"]
+    except OSError:
+        pass
+    merged = {key: str(existing_data.get(key, "") or "") for key in REMOTE_SETTING_KEYS}
+    for key in REMOTE_SETTING_KEYS:
+        if key in stored_values:
+            merged[key] = str(stored_values.get(key, "") or "")
     payload = {
-        "id": str(user_id or SETTINGS_ROW_ID),
-        "data": {key: str(stored_values.get(key, "") or "") for key in REMOTE_SETTING_KEYS},
+        "id": row_id,
+        "data": merged,
     }
     client.request(
         "POST",

@@ -1,0 +1,72 @@
+.analytics-document {
+  padding: 1.25rem 1.5rem 2rem;
+}
+
+.analytics-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.analytics-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.analytics-subject {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary, #8b8d94);
+  font-size: 0.875rem;
+}
+
+.analytics-updated {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #8b8d94);
+}
+
+.analytics-summary {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.analytics-empty {
+  color: var(--text-secondary, #8b8d94);
+  font-size: 0.9rem;
+}
+
+.analytics-table {
+  width: 100%;
+}
+
+.team-script-analytics {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-subtle, #2a2b30);
+  padding-top: 0.75rem;
+}
+
+.team-script-analytics h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.team-script-table {
+  width: 100%;
+  font-size: 0.8125rem;
+}
+
+.team-script-actions {
+  margin-top: 0.5rem;
+}
+
+.team-script-actions .button-link {
+  font-size: 0.875rem;
+  color: var(--accent, #5b8def);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}

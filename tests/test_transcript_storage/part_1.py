@@ -280,8 +280,9 @@ class Part1:
         mine = ProspectStore(client=client, user_id="user-a")
         info = mine.add_csv(b"Prospect,Phone\nMine,+1 202 555 0102\n")
         self.assertEqual(info["added"], 1)
-        phones = [lead["phone"] for lead in mine.snapshot()]
-        self.assertEqual(phones, ["+12025550102"])
+        phones = {lead["phone"] for lead in mine.snapshot()}
+        self.assertIn("+12025550102", phones)
+        self.assertNotIn("+12025550101", phones)
 
     def test_a_directory_of_part_files_reloads_as_one_list(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -470,6 +470,9 @@ class ProspectStore:
             # None means unknown, the value older entries have.
             "connected": entry["connected"] if isinstance(entry.get("connected"), bool) else None,
             "outcome": entry.get("outcome") if entry.get("outcome") in CALL_OUTCOME_KEYS else None,
+            "script_industry": str(entry.get("script_industry") or "").strip(),
+            "script_prospect_type": str(entry.get("script_prospect_type") or "").strip(),
+            "script_variation": entry.get("script_variation"),
         }
         with self.lock:
             leads = self.backend.leads_locked()
@@ -479,6 +482,14 @@ class ProspectStore:
                 replaced = [item for item in log if item.get("id") == str(replace_id)]
                 # A tag put on the dial-time entry survives the entry that replaces it.
                 record["outcome"] = record["outcome"] or next((item.get("outcome") for item in replaced if item.get("outcome")), None)
+                prior = next((item for item in replaced if item), None)
+                if prior:
+                    if not record["script_industry"]:
+                        record["script_industry"] = str(prior.get("script_industry") or "")
+                    if not record["script_prospect_type"]:
+                        record["script_prospect_type"] = str(prior.get("script_prospect_type") or "")
+                    if record.get("script_variation") in (None, ""):
+                        record["script_variation"] = prior.get("script_variation")
                 log[:] = [item for item in log if item.get("id") != str(replace_id)]
             if record["id"] and any(item.get("id") == record["id"] for item in log):
                 return dict(lead)

@@ -155,7 +155,26 @@ class SettingsTests(unittest.TestCase):
 
             def request(self, method, resource, params=None, payload=None, prefer=None):
                 calls.append((method, resource))
-                return [] if method == "GET" else None
+                if method == "GET":
+                    return []
+                if resource == "organizations" and method == "POST":
+                    name = (payload or {}).get("name") or "My team"
+                    return [{"id": "org-test", "name": name}]
+                if resource == "org_members" and method == "POST":
+                    body = payload if isinstance(payload, dict) else {}
+                    return [{
+                        "id": "member-test",
+                        "org_id": body.get("org_id"),
+                        "user_id": body.get("user_id"),
+                        "role": body.get("role"),
+                        "status": body.get("status"),
+                    }]
+                if resource == "profiles" and method == "POST":
+                    return []
+                if resource == "dialer_settings" and method == "POST":
+                    row = payload[0] if isinstance(payload, list) else payload
+                    return [row] if row else []
+                return None
 
         runtime = AppRuntime()
         runtime.client = RecordingClient()

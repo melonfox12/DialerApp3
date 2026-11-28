@@ -5,6 +5,7 @@ import { bindCallMonitor, bindDialer, bindKeyboard, bindSessionGoal, bindVoice, 
 import { bindAiDialer } from "./features/ai-dialer-agent.js";
 import { bindPerformance } from "./features/performance.js";
 import { bindTeam } from "./features/team.js";
+import { bindAnalytics } from "./features/analytics.js";
 import "./features/pipeline.js";
 import { bindWorkflow } from "./features/workflow.js";
 import { bindAddProspect, bindCsv, bindDialogs, bindProspectMenu, bindProspects } from "./features/prospects.js";
@@ -24,6 +25,7 @@ bindProspectMenu();
 bindSettings();
 bindPerformance();
 bindTeam();
+bindAnalytics();
 bindCsv();
 byId("searchInput").addEventListener("input", renderTable);
 byId("statusFilter").addEventListener("change", renderTable);

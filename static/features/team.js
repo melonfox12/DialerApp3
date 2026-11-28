@@ -1,4 +1,5 @@
 import { byId, postJson, registerRenderer, request, setText, showToast, S, state } from "../core.js";
+import { setAnalyticsSubject } from "./analytics.js";
 
 const ROSTER_REFRESH_MS = 5000;
 const LIVE_REFRESH_MS = 1500;
@@ -22,6 +23,55 @@ export function syncTeamChrome() {
   if (!show && S.dashboardTab === "team") {
     import("../_core/navigation.js").then(({ setDashboardTab }) => setDashboardTab("dialer"));
   }
+}
+
+function formatScriptRate(value) {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `${Math.round(value * 1000) / 10}%`;
+}
+
+function renderMemberScriptAnalytics(payload) {
+  const section = document.createElement("section");
+  section.className = "team-script-analytics";
+  const heading = document.createElement("h4");
+  heading.textContent = "Script analytics (7 days, live)";
+  section.append(heading);
+  const segments = payload?.segments || [];
+  if (!segments.length) {
+    const empty = document.createElement("p");
+    empty.className = "form-footnote";
+    empty.textContent = "No script-tagged dials yet for this member.";
+    section.append(empty);
+  } else {
+    const table = document.createElement("table");
+    table.className = "team-script-table";
+    const head = document.createElement("thead");
+    head.innerHTML = "<tr><th>Script</th><th>Dials</th><th>Connect %</th></tr>";
+    table.append(head);
+    const body = document.createElement("tbody");
+    for (const row of segments.slice(0, 8)) {
+      const tr = document.createElement("tr");
+      const label = `${row.industry_label || row.industry} · ${row.prospect_type_label || row.prospect_type} · v${row.variation}`;
+      const counts = row.counts || {};
+      tr.innerHTML = `<td>${label}</td><td>${counts.dials ?? 0}</td><td>${formatScriptRate(row.rates?.connect_rate)}</td>`;
+      body.append(tr);
+    }
+    table.append(body);
+    section.append(table);
+  }
+  const actions = document.createElement("div");
+  actions.className = "team-script-actions";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "button-link";
+  btn.textContent = "Open full Analytics page for this member";
+  btn.addEventListener("click", () => {
+    setAnalyticsSubject(payload?.user_id || selectedUserId || "");
+    import("../_core/navigation.js").then(({ setDashboardTab }) => setDashboardTab("analytics"));
+  });
+  actions.append(btn);
+  section.append(actions);
+  return section;
 }
 
 function formatSeen(iso) {
@@ -200,6 +250,8 @@ async function loadMemberDetail(userId, showPanel) {
   try {
     const needsMetrics = showPanel || metricsStale || !body.childElementCount;
     const needsUsage = showPanel || usageStale || !body.childElementCount;
+    const needsScripts = showPanel || metricsStale || !body.childElementCount;
+    const tz = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || "");
     const requests = [
       request(`/api/team/members/${encodeURIComponent(userId)}/live`),
     ];
@@ -209,14 +261,19 @@ async function loadMemberDetail(userId, showPanel) {
     if (needsUsage) {
       requests.push(request(`/api/team/members/${encodeURIComponent(userId)}/usage?minutes=60`));
     }
+    if (needsScripts) {
+      requests.push(request(`/api/team/members/${encodeURIComponent(userId)}/scripts/performance?days=7&tz=${tz}`));
+    }
     liveFetchAt = now;
     const results = await Promise.all(requests);
     const live = results[0];
     let metrics = null;
     let usage = null;
+    let scripts = null;
     let idx = 1;
     if (needsMetrics) metrics = results[idx++];
-    if (needsUsage) usage = results[idx];
+    if (needsUsage) usage = results[idx++];
+    if (needsScripts) scripts = results[idx];
     const member = (roster?.members || []).find((item) => item.user_id === userId);
     setText("teamMemberDetailTitle", member?.display_name || member?.email || "Member detail");
     body.replaceChildren();
@@ -256,6 +313,9 @@ async function loadMemberDetail(userId, showPanel) {
     }
     if (usage) {
       body.append(renderUsageTimeline(usage.events, usage.minutes || 60));
+    }
+    if (scripts) {
+      body.append(renderMemberScriptAnalytics(scripts));
     }
     const updated = document.createElement("p");
     updated.className = "team-detail-updated";

@@ -90,6 +90,7 @@ export const S = {
   canManageTeam: false,
   orgRole: "",
   orgId: "",
+  analyticsSubjectUserId: "",
   dialsSubView: "current",
   selectedDialRecordId: null,
   selectedDialRecord: null,
