@@ -8,9 +8,11 @@ from shared.pipeline_config import (
     LOCKED_PIPELINE_KEYS,
     parse_custom_pipeline_steps_json,
 )
+from features import org
 from shared.vocabulary import (
     DAILY_GOAL_MAX_MINUTES,
     REMOTE_SETTING_KEYS,
+    SETTINGS_CREDENTIAL_ENV_KEYS,
     SETTING_DEFAULTS,
     SETTINGS_ROW_ID,
     TWILIO_ACCOUNT_KEYS,
@@ -95,11 +97,54 @@ def _pipeline_json_from_post(data):
     return ""
 
 
-def settings_state(env_path, account_values, storage_name="local JSON files", account_email="", *, signed_in):
+def may_view_own_credentials(dialer):
+    """Reps in an org cannot view or edit API credentials; managers and owners can."""
+    user_id = getattr(dialer, "account_user_id", None)
+    if not user_id:
+        return True
+    membership = getattr(dialer, "org_membership", None) or {}
+    role = str(membership.get("role") or "").strip().lower()
+    if not role:
+        return True
+    return org.can_manage_team(role)
+
+
+def _strip_credentials_from_view(view):
+    view["account_sid"] = ""
+    view["auth_token"] = ""
+    view["api_key"] = ""
+    view["api_secret"] = ""
+    view["twiml_app_sid"] = ""
+    view["public_base_url"] = ""
+    view["has_auth_token"] = False
+    view["has_api_secret"] = False
+    view["ai_bridge_wss_url"] = ""
+    view["ai_bridge_app_url"] = ""
+    view["ai_bridge_secret"] = ""
+    view["has_ai_bridge_secret"] = False
+    view["openai_api_key"] = ""
+    view["has_openai_api_key"] = False
+    view["cartesia_api_key"] = ""
+    view["has_cartesia_api_key"] = False
+    view["can_edit_credentials"] = False
+    view["credentials_managed_by_org"] = True
+    return view
+
+
+def settings_state(
+    env_path,
+    account_values,
+    storage_name="local JSON files",
+    account_email="",
+    *,
+    signed_in,
+    include_credentials=None,
+):
     current = values(env_path, account_values, signed_in=signed_in)
     parsed = preferences(current)
     tail, _ = parse_custom_pipeline_steps_json(parsed.get("PIPELINE_CUSTOM_STEPS_JSON") or "")
-    return {
+    show_credentials = bool(include_credentials) if include_credentials is not None else True
+    view = {
         "account_sid": current.get("TWILIO_ACCOUNT_SID", ""),
         "auth_token": "",
         "api_key": current.get("TWILIO_API_KEY", ""),
@@ -110,6 +155,8 @@ def settings_state(env_path, account_values, storage_name="local JSON files", ac
         "has_api_secret": bool(current.get("TWILIO_API_SECRET")),
         "storage": storage_name or "local JSON files",
         "account_email": account_email or "",
+        "can_edit_credentials": show_credentials,
+        "credentials_managed_by_org": signed_in and not show_credentials,
         "session_goal": int(parsed["SESSION_GOAL"]),
         "conversation_threshold": int(parsed["CONVERSATION_THRESHOLD_SECONDS"]),
         "auto_advance_delay": int(parsed["AUTO_ADVANCE_DELAY_SECONDS"]),
@@ -139,6 +186,9 @@ def settings_state(env_path, account_values, storage_name="local JSON files", ac
         "pipeline_custom_steps": tail,
         "pipeline_locked_step_keys": sorted(LOCKED_PIPELINE_KEYS),
     }
+    if not show_credentials:
+        return _strip_credentials_from_view(view)
+    return view
 
 
 def daily_goal(parsed):
@@ -186,7 +236,7 @@ def save_goal(env_path, account_values, account_user_id, data, today, save_remot
     return {**parsed, **updates}
 
 
-def save_settings(env_path, account_values, account_user_id, data, save_remote=None):
+def save_settings(env_path, account_values, account_user_id, data, save_remote=None, *, allow_credentials=True):
     signed_in = bool(account_user_id)
     existing = values(env_path, account_values, signed_in=signed_in)
     candidate = {
@@ -203,50 +253,68 @@ def save_settings(env_path, account_values, account_user_id, data, save_remote=N
         "CALLING_START_HOUR": data.get("calling_start_hour", SETTING_DEFAULTS["CALLING_START_HOUR"]),
         "CALLING_END_HOUR": data.get("calling_end_hour", SETTING_DEFAULTS["CALLING_END_HOUR"]),
         "OPENING_SCRIPT": data.get("opening_script", ""),
-        "AI_BRIDGE_WSS_URL": str(data.get("ai_bridge_wss_url", existing.get("AI_BRIDGE_WSS_URL", ""))).strip(),
-        "AI_BRIDGE_APP_URL": str(data.get("ai_bridge_app_url", existing.get("AI_BRIDGE_APP_URL", "http://127.0.0.1:8000"))).strip(),
-        "AI_BRIDGE_SECRET": str(data.get("ai_bridge_secret", existing.get("AI_BRIDGE_SECRET", ""))).strip(),
-        "CARTESIA_API_KEY": str(data.get("cartesia_api_key", existing.get("CARTESIA_API_KEY", ""))).strip(),
-        "CARTESIA_VOICE_ID": str(data.get("cartesia_voice_id", existing.get("CARTESIA_VOICE_ID", ""))).strip(),
-        "OPENAI_API_KEY": str(data.get("openai_api_key", existing.get("OPENAI_API_KEY", ""))).strip(),
         "AI_LLM_MODEL": str(data.get("ai_llm_model", existing.get("AI_LLM_MODEL", "gpt-4o-mini"))).strip(),
         "AI_BRIDGE_EMBEDDED": "true" if data.get("ai_bridge_embedded") else "false",
         "AI_VOICEMAIL_DROP": "true" if data.get("ai_voicemail_drop") else "false",
         "AI_VOICEMAIL_MESSAGE": str(data.get("ai_voicemail_message", existing.get("AI_VOICEMAIL_MESSAGE", ""))).strip(),
     }
+    if allow_credentials:
+        candidate.update({
+            "AI_BRIDGE_WSS_URL": str(data.get("ai_bridge_wss_url", existing.get("AI_BRIDGE_WSS_URL", ""))).strip(),
+            "AI_BRIDGE_APP_URL": str(data.get("ai_bridge_app_url", existing.get("AI_BRIDGE_APP_URL", "http://127.0.0.1:8000"))).strip(),
+            "AI_BRIDGE_SECRET": str(data.get("ai_bridge_secret", existing.get("AI_BRIDGE_SECRET", ""))).strip(),
+            "CARTESIA_API_KEY": str(data.get("cartesia_api_key", existing.get("CARTESIA_API_KEY", ""))).strip(),
+            "CARTESIA_VOICE_ID": str(data.get("cartesia_voice_id", existing.get("CARTESIA_VOICE_ID", ""))).strip(),
+            "OPENAI_API_KEY": str(data.get("openai_api_key", existing.get("OPENAI_API_KEY", ""))).strip(),
+        })
+    else:
+        for key in SETTINGS_CREDENTIAL_ENV_KEYS:
+            candidate[key] = str(existing.get(key, "") or "")
+        candidate["CARTESIA_VOICE_ID"] = str(existing.get("CARTESIA_VOICE_ID", "") or "")
     if "pipeline_custom_steps" in data or "pipeline_custom_steps_json" in data:
         pj = _pipeline_json_from_post(data)
         if pj is not None:
             candidate["PIPELINE_CUSTOM_STEPS_JSON"] = pj
     parsed = preferences(candidate)
     current = values(env_path, account_values, signed_in=signed_in)
-    updates = {
-        "TWILIO_ACCOUNT_SID": str(data.get("account_sid", "")),
-        "TWILIO_AUTH_TOKEN": str(data.get("auth_token", "")),
-        "TWILIO_API_KEY": str(data.get("api_key", "")),
-        "TWILIO_API_SECRET": str(data.get("api_secret", "")),
-        "TWILIO_TWIML_APP_SID": str(data.get("twiml_app_sid", "")),
-        "PUBLIC_BASE_URL": str(data.get("public_base_url", "")).rstrip("/"),
-        **parsed,
-    }
-    if not updates["TWILIO_ACCOUNT_SID"]:
-        updates["TWILIO_ACCOUNT_SID"] = current.get("TWILIO_ACCOUNT_SID", "")
-    if not updates["TWILIO_AUTH_TOKEN"]:
-        updates["TWILIO_AUTH_TOKEN"] = current.get("TWILIO_AUTH_TOKEN", "")
-    if not updates["TWILIO_API_KEY"]:
-        updates["TWILIO_API_KEY"] = current.get("TWILIO_API_KEY", "")
-    if not updates["TWILIO_API_SECRET"]:
-        updates["TWILIO_API_SECRET"] = current.get("TWILIO_API_SECRET", "")
-    if not updates["TWILIO_TWIML_APP_SID"]:
-        updates["TWILIO_TWIML_APP_SID"] = current.get("TWILIO_TWIML_APP_SID", "")
-    if not updates["PUBLIC_BASE_URL"]:
-        updates["PUBLIC_BASE_URL"] = current.get("PUBLIC_BASE_URL", "")
-    if not updates.get("AI_BRIDGE_SECRET"):
-        updates["AI_BRIDGE_SECRET"] = current.get("AI_BRIDGE_SECRET", "")
-    if not updates.get("CARTESIA_API_KEY"):
-        updates["CARTESIA_API_KEY"] = current.get("CARTESIA_API_KEY", "")
-    if not updates.get("OPENAI_API_KEY"):
-        updates["OPENAI_API_KEY"] = current.get("OPENAI_API_KEY", "")
+    updates = {**parsed}
+    if allow_credentials:
+        updates.update({
+            "TWILIO_ACCOUNT_SID": str(data.get("account_sid", "")),
+            "TWILIO_AUTH_TOKEN": str(data.get("auth_token", "")),
+            "TWILIO_API_KEY": str(data.get("api_key", "")),
+            "TWILIO_API_SECRET": str(data.get("api_secret", "")),
+            "TWILIO_TWIML_APP_SID": str(data.get("twiml_app_sid", "")),
+            "PUBLIC_BASE_URL": str(data.get("public_base_url", "")).rstrip("/"),
+            "AI_BRIDGE_WSS_URL": str(data.get("ai_bridge_wss_url", existing.get("AI_BRIDGE_WSS_URL", ""))).strip(),
+            "AI_BRIDGE_APP_URL": str(data.get("ai_bridge_app_url", existing.get("AI_BRIDGE_APP_URL", ""))).strip(),
+            "AI_BRIDGE_SECRET": str(data.get("ai_bridge_secret", existing.get("AI_BRIDGE_SECRET", ""))).strip(),
+            "CARTESIA_API_KEY": str(data.get("cartesia_api_key", existing.get("CARTESIA_API_KEY", ""))).strip(),
+            "OPENAI_API_KEY": str(data.get("openai_api_key", existing.get("OPENAI_API_KEY", ""))).strip(),
+            "CARTESIA_VOICE_ID": str(data.get("cartesia_voice_id", existing.get("CARTESIA_VOICE_ID", ""))).strip(),
+        })
+        if not updates["TWILIO_ACCOUNT_SID"]:
+            updates["TWILIO_ACCOUNT_SID"] = current.get("TWILIO_ACCOUNT_SID", "")
+        if not updates["TWILIO_AUTH_TOKEN"]:
+            updates["TWILIO_AUTH_TOKEN"] = current.get("TWILIO_AUTH_TOKEN", "")
+        if not updates["TWILIO_API_KEY"]:
+            updates["TWILIO_API_KEY"] = current.get("TWILIO_API_KEY", "")
+        if not updates["TWILIO_API_SECRET"]:
+            updates["TWILIO_API_SECRET"] = current.get("TWILIO_API_SECRET", "")
+        if not updates["TWILIO_TWIML_APP_SID"]:
+            updates["TWILIO_TWIML_APP_SID"] = current.get("TWILIO_TWIML_APP_SID", "")
+        if not updates["PUBLIC_BASE_URL"]:
+            updates["PUBLIC_BASE_URL"] = current.get("PUBLIC_BASE_URL", "")
+        if not updates.get("AI_BRIDGE_SECRET"):
+            updates["AI_BRIDGE_SECRET"] = current.get("AI_BRIDGE_SECRET", "")
+        if not updates.get("CARTESIA_API_KEY"):
+            updates["CARTESIA_API_KEY"] = current.get("CARTESIA_API_KEY", "")
+        if not updates.get("OPENAI_API_KEY"):
+            updates["OPENAI_API_KEY"] = current.get("OPENAI_API_KEY", "")
+    else:
+        for key in SETTINGS_CREDENTIAL_ENV_KEYS:
+            updates[key] = str(current.get(key, "") or "")
+        updates["CARTESIA_VOICE_ID"] = str(current.get("CARTESIA_VOICE_ID", "") or "")
     if signed_in:
         account_values.update(updates)
         if save_remote:

@@ -174,23 +174,33 @@ class Dialer(DialerState):
     def voice_access_token(self):
         return twilio.voice_access_token(self)
 
-    def settings_state(self):
+    def settings_state(self, *, include_credentials=None):
+        if include_credentials is None:
+            include_credentials = settings_feature.may_view_own_credentials(self)
         return settings_feature.settings_state(
             self.env_path,
             self.account_values,
             getattr(self, "storage_name", "local JSON files"),
             getattr(self, "account_email", ""),
             signed_in=bool(self.account_user_id),
+            include_credentials=include_credentials,
         )
 
-    def save_settings(self, data):
+    def save_settings(self, data, *, allow_credentials=None):
+        if allow_credentials is None:
+            allow_credentials = settings_feature.may_view_own_credentials(self)
         save_remote = None
         saver = getattr(self, "settings_saver", None)
         if saver:
             def save_remote(_stored, saver=saver):
                 saver(self)
-        parsed = settings_feature.save_settings(
-            self.env_path, self.account_values, self.account_user_id, data, save_remote,
+        settings_feature.save_settings(
+            self.env_path,
+            self.account_values,
+            self.account_user_id,
+            data,
+            save_remote,
+            allow_credentials=allow_credentials,
         )
         with self.lock:
             self.settings = self.read_settings()

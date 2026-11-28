@@ -25,21 +25,21 @@ def maybe_record_presence(runtime, dialer, live_payload):
         dialer._app_usage_state = app_usage.state_from_presence(row) if row else app_usage.empty_state()
     app_usage.apply_tick(dialer._app_usage_state, delta_seconds=delta)
     dialer._team_presence_at = now
+    pending = app_usage.pop_pending_browser_session_close(dialer._app_usage_state)
+    if pending:
+        try:
+            org_storage.insert_usage_event(client, org_id, user_id, "browser_session", pending)
+        except OSError:
+            pass
     in_flight = live_payload.get("in_flight") if isinstance(live_payload, dict) else []
+    usage_fields = app_usage.presence_fields_from_state(dialer._app_usage_state)
     org_storage.upsert_presence(client, user_id, org_id, {
         "running": bool(live_payload.get("running")),
         "paused": bool(live_payload.get("paused")),
         "stage": live_payload.get("stage") or "idle",
         "active_lead_id": live_payload.get("active_lead_id") or "",
         "in_flight_count": len(in_flight) if isinstance(in_flight, list) else 0,
-        "app_today_date": dialer._app_usage_state.get("app_today_date"),
-        "app_today_seconds": dialer._app_usage_state.get("app_today_seconds"),
-        "app_week_key": dialer._app_usage_state.get("app_week_key"),
-        "app_week_seconds": dialer._app_usage_state.get("app_week_seconds"),
-        "app_month_key": dialer._app_usage_state.get("app_month_key"),
-        "app_month_seconds": dialer._app_usage_state.get("app_month_seconds"),
-        "app_session_seconds": dialer._app_usage_state.get("app_session_seconds"),
-        "app_session_started_at": dialer._app_usage_state.get("app_session_started_at"),
+        **usage_fields,
     })
 
 
@@ -155,6 +155,7 @@ def member_live_payload(runtime, dialer, member_user_id):
     presence = org_storage.list_presence_for_org(client, membership["org_id"]).get(target) or {}
     account = _browser_live_account(runtime, target)
     if account:
+        app_usage.hydrate_app_usage_state(account.dialer, presence, client=client, user_id=target)
         view = account.dialer.live_state()
         active = view.get("active_lead") or {}
         return {

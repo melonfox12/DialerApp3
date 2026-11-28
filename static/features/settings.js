@@ -24,8 +24,26 @@ function authTokenToSave() {
   return "";
 }
 
+export function syncSettingsCredentialChrome(settings) {
+  const block = document.querySelector(".settings-api-stack");
+  if (!block) return;
+  const hide = settings && settings.credentials_managed_by_org;
+  block.hidden = Boolean(hide);
+  const note = document.getElementById("settingsRepCredentialNote");
+  if (hide && !note) {
+    const foot = document.createElement("p");
+    foot.id = "settingsRepCredentialNote";
+    foot.className = "form-footnote";
+    foot.textContent = "Twilio and API credentials are managed by your organization owner. Other preferences below are still yours to change.";
+    block.insertAdjacentElement("beforebegin", foot);
+  } else if (!hide && note) {
+    note.remove();
+  }
+}
+
 export function applySavedSettings(settings) {
   state.settings = settings;
+  syncSettingsCredentialChrome(settings);
   byId("accountSidInput").value = settings.account_sid || "";
   resetAuthTokenField(settings.has_auth_token);
   const apiKey = byId("apiKeyInput");
@@ -91,13 +109,8 @@ export async function openSettings() {
 }
 
 function settingsPayload() {
-  return {
-    account_sid: byId("accountSidInput").value,
-    auth_token: authTokenToSave(),
-    api_key: byId("apiKeyInput").value,
-    api_secret: byId("apiSecretInput").value,
-    twiml_app_sid: byId("twimlAppSidInput").value,
-    public_base_url: byId("publicUrlInput").value,
+  const managed = state.settings?.credentials_managed_by_org;
+  const payload = {
     session_goal: byId("sessionGoalInput").value,
     conversation_threshold: byId("conversationThresholdInput").value,
     auto_advance_delay: byId("autoAdvanceDelayInput").value,
@@ -105,19 +118,30 @@ function settingsPayload() {
     calling_end_hour: byId("callingEndHourInput").value,
     break_nudge_minutes: byId("breakNudgeInput").value,
     opening_script: byId("openingScriptInput").value,
-    ai_bridge_wss_url: byId("aiBridgeWssInput").value,
-    ai_bridge_app_url: byId("aiBridgeAppInput").value,
-    ai_bridge_secret: byId("aiBridgeSecretInput").value,
-    openai_api_key: byId("openaiKeyInput").value,
     ai_llm_model: byId("aiLlmModelInput").value,
-    cartesia_api_key: byId("cartesiaKeyInput").value,
-    cartesia_voice_id: byId("cartesiaVoiceInput").value.trim(),
-    ai_bridge_embedded: byId("aiBridgeEmbeddedInput").checked,
-    ai_voicemail_drop: byId("aiVoicemailDropInput").checked,
-    ai_voicemail_message: byId("aiVoicemailMessageInput").value,
     sounds_enabled: byId("soundsEnabledInput").checked,
     sound_volume: byId("soundVolumeInput").value,
   };
+  if (!managed) {
+    Object.assign(payload, {
+      account_sid: byId("accountSidInput").value,
+      auth_token: authTokenToSave(),
+      api_key: byId("apiKeyInput").value,
+      api_secret: byId("apiSecretInput").value,
+      twiml_app_sid: byId("twimlAppSidInput").value,
+      public_base_url: byId("publicUrlInput").value,
+      ai_bridge_wss_url: byId("aiBridgeWssInput").value,
+      ai_bridge_app_url: byId("aiBridgeAppInput").value,
+      ai_bridge_secret: byId("aiBridgeSecretInput").value,
+      openai_api_key: byId("openaiKeyInput").value,
+      cartesia_api_key: byId("cartesiaKeyInput").value,
+      cartesia_voice_id: byId("cartesiaVoiceInput").value.trim(),
+      ai_bridge_embedded: byId("aiBridgeEmbeddedInput").checked,
+      ai_voicemail_drop: byId("aiVoicemailDropInput").checked,
+      ai_voicemail_message: byId("aiVoicemailMessageInput").value,
+    });
+  }
+  return payload;
 }
 
 export function bindSettings() {

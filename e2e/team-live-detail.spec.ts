@@ -25,6 +25,6 @@ test.describe('Team member live detail', () => {
     const firstRow = page.locator('#teamTableBody tr').first();
     await firstRow.click();
     await expect(page.locator('#teamMemberDetail')).toBeVisible();
-    await expect(page.locator('#teamMemberDetailBody')).toContainText(/Updated|Live|Last seen/i);
+    await expect(page.locator('#teamMemberLiveLine, #teamMemberUsageRow')).toBeVisible();
   });
 });

@@ -61,6 +61,7 @@ export async function bootApp() {
   refreshState();
   request("/api/settings").then((settings) => {
     applySavedSettings(settings);
+    if (settings.credentials_managed_by_org) return;
     if (!settings.account_sid || !settings.has_auth_token || !settings.api_key || !settings.has_api_secret || !settings.twiml_app_sid || !settings.public_base_url) {
       showToast("Complete your Twilio Voice credentials and callback URL in Settings to start dialing.");
     }

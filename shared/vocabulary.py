@@ -273,9 +273,12 @@ DEFAULT_ORG_NAME = "My team"
 TEAM_ONLINE_SECONDS = 90
 TEAM_PRESENCE_WRITE_SECONDS = 10
 APP_USAGE_MAX_TICK_SECONDS = 15
+# Live browser session ends after this gap with no /api/live heartbeat (tab closed or idle).
+APP_SESSION_GAP_SECONDS = 120
 USAGE_EVENT_KINDS = (
     "session_start",
     "session_stop",
+    "browser_session",
     "session_pause",
     "session_resume",
     "stage_change",
@@ -327,6 +330,14 @@ TWILIO_ACCOUNT_KEYS = (
     "TWILIO_API_SECRET",
     "TWILIO_TWIML_APP_SID",
     "PUBLIC_BASE_URL",
+)
+# Per-user settings the server never exposes to org reps (managed by owner/manager).
+SETTINGS_CREDENTIAL_ENV_KEYS = TWILIO_ACCOUNT_KEYS + (
+    "AI_BRIDGE_WSS_URL",
+    "AI_BRIDGE_APP_URL",
+    "AI_BRIDGE_SECRET",
+    "OPENAI_API_KEY",
+    "CARTESIA_API_KEY",
 )
 SUPABASE_ENV_KEYS = (
     "SUPABASE_URL",

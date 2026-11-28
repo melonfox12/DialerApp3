@@ -332,6 +332,14 @@ function bindTabReorder() {
   }
 }
 
+function applyPageTitle() {
+  if (S.dashboardTab === "team") {
+    import("../features/team.js").then((module) => module.syncTeamPageHeading?.());
+    return;
+  }
+  setText("pageTitle", TAB_TITLES[S.dashboardTab] || "Dialer");
+}
+
 export function setDashboardTab(name, moveFocus = false) {
   if (isLockedDashboardTab(name)) {
     showToast("This page is locked.");
@@ -356,7 +364,7 @@ export function setDashboardTab(name, moveFocus = false) {
   for (const tab of ["performance", "team", "analytics", "pipeline", "workflow", "prospects", "pool", "dials"]) {
     byId(`${tab}TabPanel`).hidden = S.dashboardTab !== tab;
   }
-  setText("pageTitle", TAB_TITLES[S.dashboardTab]);
+  applyPageTitle();
   byId("crmView")?.classList.toggle("is-workflow-view", S.dashboardTab === "workflow");
   if (S.dashboardTab === "performance") {
     S.performanceFetchedAt = 0;

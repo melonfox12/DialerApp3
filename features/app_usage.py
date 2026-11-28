@@ -3,7 +3,7 @@
 import time
 from datetime import date, datetime, timezone
 
-from shared.vocabulary import APP_USAGE_MAX_TICK_SECONDS, TEAM_ONLINE_SECONDS
+from shared.vocabulary import APP_SESSION_GAP_SECONDS, APP_USAGE_MAX_TICK_SECONDS
 
 
 def utc_now():
@@ -60,6 +60,28 @@ def empty_state(now=None):
     }
 
 
+def _session_gap_seconds(last_seen, now):
+    if not last_seen:
+        return None
+    return (now - last_seen).total_seconds()
+
+
+def _close_browser_session(state, *, now, ended_at=None):
+    """End the current live session; return a Supabase payload when time was tracked."""
+    seconds = max(0, int(state.get("app_session_seconds") or 0))
+    started_at = state.get("app_session_started_at") or ""
+    state["app_session_seconds"] = 0
+    state["app_session_started_at"] = now.isoformat()
+    if seconds <= 0:
+        return None
+    end = ended_at or now
+    return {
+        "seconds": seconds,
+        "started_at": started_at or end.isoformat(),
+        "ended_at": end.isoformat(),
+    }
+
+
 def state_from_presence(row, now=None):
     now = now or utc_now()
     row = row or {}
@@ -84,13 +106,20 @@ def state_from_presence(row, now=None):
     last_seen = parse_iso(row.get("last_seen_at"))
     session_seconds = int(row.get("app_session_seconds") or 0)
     session_started = row.get("app_session_started_at") or ""
-    if last_seen and (now - last_seen).total_seconds() > TEAM_ONLINE_SECONDS:
+    pending_close = None
+    gap = _session_gap_seconds(last_seen, now)
+    if gap is not None and gap > APP_SESSION_GAP_SECONDS:
+        state_stub = {
+            "app_session_seconds": session_seconds,
+            "app_session_started_at": session_started or (last_seen.isoformat() if last_seen else ""),
+        }
+        pending_close = _close_browser_session(state_stub, now=now, ended_at=last_seen or now)
         session_seconds = 0
         session_started = now.isoformat()
     elif not session_started:
         session_started = row.get("last_seen_at") or now.isoformat()
 
-    return {
+    out = {
         "app_today_date": today_date,
         "app_today_seconds": max(0, today_seconds),
         "app_week_key": week_key,
@@ -101,6 +130,9 @@ def state_from_presence(row, now=None):
         "app_session_started_at": session_started,
         "last_seen_at": (last_seen or now).isoformat(),
     }
+    if pending_close:
+        out["_pending_browser_session_close"] = pending_close
+    return out
 
 
 def apply_tick(state, *, delta_seconds, now=None, online_gap_seconds=None):
@@ -132,9 +164,9 @@ def apply_tick(state, *, delta_seconds, now=None, online_gap_seconds=None):
         last_seen = parse_iso(state.get("last_seen_at"))
         if last_seen:
             gap = (now - last_seen).total_seconds()
-    if gap is not None and gap > TEAM_ONLINE_SECONDS:
-        state["app_session_seconds"] = 0
-        state["app_session_started_at"] = now.isoformat()
+    pending_close = None
+    if gap is not None and gap > APP_SESSION_GAP_SECONDS:
+        pending_close = _close_browser_session(state, now=now)
 
     tick = max(0.0, min(float(delta_seconds or 0), float(APP_USAGE_MAX_TICK_SECONDS)))
     added = int(round(tick))
@@ -145,7 +177,22 @@ def apply_tick(state, *, delta_seconds, now=None, online_gap_seconds=None):
     state["last_seen_at"] = now.isoformat()
     if not state.get("app_session_started_at"):
         state["app_session_started_at"] = now.isoformat()
+    if pending_close:
+        state["_pending_browser_session_close"] = pending_close
     return state
+
+
+def pop_pending_browser_session_close(state):
+    if not state:
+        return None
+    return state.pop("_pending_browser_session_close", None)
+
+
+def presence_fields_from_state(state):
+    """Presence upsert body fragment; drops ephemeral session-close markers."""
+    fields = dict(state or {})
+    fields.pop("_pending_browser_session_close", None)
+    return fields
 
 
 def live_extra_seconds(dialer):
@@ -182,8 +229,60 @@ def public_app_usage(state, *, live_extra_seconds=0):
     }
 
 
+_PERIOD_SECOND_KEYS = (
+    "app_today_seconds",
+    "app_week_seconds",
+    "app_month_seconds",
+    "app_session_seconds",
+)
+
+
+def hydrate_app_usage_state(dialer, presence_row, *, client=None, user_id=None):
+    """Load persisted Supabase counters into an in-memory dialer session if missing."""
+    if dialer is None or getattr(dialer, "_app_usage_state", None):
+        return
+    row = presence_row
+    if client and user_id:
+        try:
+            from features import org_storage
+
+            full = org_storage.get_presence(client, user_id)
+            if full:
+                row = full
+        except OSError:
+            pass
+    dialer._app_usage_state = state_from_presence(row or {})
+
+
+def merged_usage_state(presence_row, dialer=None):
+    """Combine persisted presence with live session counters (never drop stored totals)."""
+    stored = state_from_presence(presence_row or {})
+    if dialer is None or not getattr(dialer, "_app_usage_state", None):
+        return stored
+    live = dialer._app_usage_state
+    merged = dict(stored)
+    for key in ("app_today_seconds", "app_week_seconds", "app_month_seconds"):
+        merged[key] = max(int(stored.get(key) or 0), int(live.get(key) or 0))
+    merged["app_session_seconds"] = max(0, int(live.get("app_session_seconds") or 0))
+    for key in ("app_today_date", "app_week_key", "app_month_key", "app_session_started_at", "last_seen_at"):
+        if live.get(key):
+            merged[key] = live.get(key)
+    return merged
+
+
+def usage_summary_from_app_payload(app_payload):
+    """API-facing usage cards (minutes, one decimal)."""
+    app_payload = app_payload or {}
+    return {
+        "live_session_minutes": float(app_payload.get("app_minutes_session") or 0),
+        "today_minutes": float(app_payload.get("app_minutes_today") or 0),
+        "week_minutes": float(app_payload.get("app_minutes_week") or 0),
+        "month_minutes": float(app_payload.get("app_minutes_month") or 0),
+    }
+
+
 def app_usage_for_view(presence_row, dialer=None):
     """Presence row from DB, optional live dialer for same-server minute updates."""
-    if dialer is not None and getattr(dialer, "_app_usage_state", None):
-        return public_app_usage(dialer._app_usage_state, live_extra_seconds=live_extra_seconds(dialer))
-    return public_app_usage(state_from_presence(presence_row))
+    merged = merged_usage_state(presence_row, dialer)
+    extra = live_extra_seconds(dialer) if dialer is not None else 0
+    return public_app_usage(merged, live_extra_seconds=extra)

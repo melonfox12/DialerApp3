@@ -8,7 +8,19 @@ from http.server import BaseHTTPRequestHandler
 
 from _web.hooks import dispatch_twilio_hook
 from _web.respond import HandlerMixin
-from features import ai_voice_routes, call_scripts, dialer, metrics, org, prospects, script_analytics, settings, team, usage_events
+from features import (
+    ai_voice_routes,
+    call_scripts,
+    dialer,
+    metrics,
+    org,
+    prospects,
+    script_analytics,
+    settings,
+    team,
+    team_workspace,
+    usage_events,
+)
 from features.accounts import resolve_account
 from shared.config import read_env
 from shared.infra import debug_event
@@ -94,6 +106,7 @@ FEATURE_ROUTES = (
     + dialer.ROUTES
     + call_scripts.ROUTES
     + team.ROUTES
+    + team_workspace.ROUTES
     + usage_events.ROUTES
     + script_analytics.ROUTES
     + ai_voice_routes.ROUTES

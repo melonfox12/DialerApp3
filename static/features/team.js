@@ -1,11 +1,87 @@
 import { byId, postJson, registerRenderer, request, setText, showToast, S, state } from "../core.js";
 import { setAnalyticsSubject } from "./analytics.js";
+import {
+  closeMemberWorkspace,
+  openMemberWorkspace,
+  refreshMemberWorkspace,
+  setWorkspaceAfterClose,
+  setWorkspaceCloseHandler,
+} from "./_team/member-workspace.js";
+
+const TEAM_MEMBER_KEY = "prospect-desk-team-member";
+
+function rememberTeamMember(userId) {
+  try {
+    if (userId) localStorage.setItem(TEAM_MEMBER_KEY, userId);
+    else localStorage.removeItem(TEAM_MEMBER_KEY);
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function savedTeamMember() {
+  try {
+    return localStorage.getItem(TEAM_MEMBER_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function dismissMemberWorkspace() {
+  memberDetailEpoch += 1;
+  rememberTeamMember(null);
+  selectedUserId = null;
+  stopLivePolling();
+  closeMemberWorkspace();
+  renderTeamTable();
+  syncTeamPageHeading();
+  requestAnimationFrame(() => syncTeamPageHeading());
+}
+
+export function clearTeamMemberSelection() {
+  dismissMemberWorkspace();
+}
+
+export function syncTeamPageHeading() {
+  const el = byId("pageTitle");
+  if (!el) return;
+  if (S.dashboardTab !== "team") return;
+  const detailHidden = byId("teamMemberDetail")?.hidden !== false;
+  el.replaceChildren();
+  el.classList.add("page-title");
+  if (detailHidden || !selectedUserId) {
+    el.textContent = "Team";
+    el.removeAttribute("aria-label");
+    return;
+  }
+  const member = (roster?.members || []).find((item) => item.user_id === selectedUserId);
+  const name =
+    member?.display_name ||
+    member?.email ||
+    byId("teamMemberDetailTitle")?.textContent?.trim() ||
+    "Member";
+  const link = document.createElement("button");
+  link.type = "button";
+  link.className = "page-title-link";
+  link.textContent = "Team";
+  link.addEventListener("click", () => dismissMemberWorkspace());
+  const sep = document.createElement("span");
+  sep.className = "page-title-sep";
+  sep.setAttribute("aria-hidden", "true");
+  sep.textContent = " / ";
+  const trail = document.createElement("span");
+  trail.className = "page-title-trail";
+  trail.textContent = `${name} info`;
+  el.append(link, sep, trail);
+  el.setAttribute("aria-label", `Team, ${name} info`);
+}
 
 const ROSTER_REFRESH_MS = 5000;
 const LIVE_REFRESH_MS = 1500;
 const USAGE_REFRESH_MS = 10_000;
 let roster = null;
 let selectedUserId = null;
+let memberDetailEpoch = 0;
 let rosterFetchAt = 0;
 let liveTimer = null;
 let liveFetchAt = 0;
@@ -84,47 +160,6 @@ function formatAppMinutes(usage, online) {
   return `${today}m today · ${week}m wk`;
 }
 
-function renderAppUsageBlock(app, online) {
-  const section = document.createElement("section");
-  section.className = "team-app-usage";
-  const heading = document.createElement("h4");
-  heading.className = "team-section-label";
-  heading.textContent = "Browser app time (UTC)";
-  section.append(heading);
-  const rows = [
-    ["This browser session", app?.app_minutes_session, online],
-    ["Today", app?.app_minutes_today, true],
-    ["This week (ISO)", app?.app_minutes_week, true],
-    ["This month", app?.app_minutes_month, true],
-  ];
-  const list = document.createElement("dl");
-  list.className = "team-app-usage-list";
-  for (const [label, minutes, show] of rows) {
-    if (!show && !Number(minutes)) continue;
-    const dt = document.createElement("dt");
-    dt.textContent = label;
-    const dd = document.createElement("dd");
-    dd.textContent = `${Number(minutes ?? 0)} min`;
-    list.append(dt, dd);
-  }
-  section.append(list);
-  const note = document.createElement("p");
-  note.className = "form-footnote";
-  note.textContent = "Session resets when they leave the app (~90s without heartbeats). Today, week, and month keep adding.";
-  section.append(note);
-  return section;
-}
-
-function formatSeen(iso) {
-  if (!iso) return "unknown";
-  const seen = Date.parse(iso);
-  if (!Number.isFinite(seen)) return iso;
-  const delta = Math.max(0, Date.now() - seen);
-  if (delta < 60_000) return `${Math.floor(delta / 1000)}s ago`;
-  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
-  return new Date(seen).toLocaleString();
-}
-
 function stopLivePolling() {
   if (liveTimer) {
     clearInterval(liveTimer);
@@ -156,9 +191,24 @@ async function refreshRoster(force = false) {
       setText("teamOrgSubtitle", `${roster.org_name} · roster and live activity · updates every ${ROSTER_REFRESH_MS / 1000}s`);
     }
     renderTeamTable();
-    if (selectedUserId) {
-      loadMemberDetail(selectedUserId, false);
+    const savedMember = !selectedUserId ? savedTeamMember() : "";
+    if (!selectedUserId && savedMember) {
+      const exists = (roster?.members || []).some((item) => item.user_id === savedMember);
+      if (exists && savedTeamMember() === savedMember) {
+        memberDetailEpoch += 1;
+        const epoch = memberDetailEpoch;
+        selectedUserId = savedMember;
+        syncLivePolling();
+        await loadMemberDetail(savedMember, true, epoch);
+        if (selectedUserId === savedMember) syncTeamPageHeading();
+        return;
+      }
+      rememberTeamMember(null);
     }
+    if (selectedUserId && !byId("teamMemberDetail")?.hidden) {
+      await loadMemberDetail(selectedUserId, false, memberDetailEpoch);
+    }
+    syncTeamPageHeading();
   } catch (error) {
     showToast(error.message || "Could not load team roster.");
   }
@@ -177,6 +227,7 @@ function renderTeamTable() {
   for (const member of members) {
     const row = document.createElement("tr");
     row.dataset.userId = member.user_id || "";
+    if (member.user_id === selectedUserId) row.classList.add("is-selected");
     const nameCell = document.createElement("td");
     const strong = document.createElement("strong");
     strong.textContent = member.display_name || member.email || "—";
@@ -205,23 +256,22 @@ function renderTeamTable() {
     activityCell.textContent = member.online ? stage : (stage === "idle" ? "—" : stage);
     const appCell = document.createElement("td");
     appCell.textContent = formatAppMinutes(member.app_usage, member.online);
-    appCell.title = "App minutes today and this week (UTC); live session when online";
+    appCell.title = "App minutes today and this week (UTC); live session = continuous tab open (2 min gap starts a new session)";
     const todayCell = document.createElement("td");
     const today = member.today || {};
     todayCell.textContent = `${today.dials ?? 0} dials · ${today.connected ?? 0} connects · ${today.booked ?? 0} booked`;
     row.append(nameCell, roleCell, statusCell, activityCell, appCell, todayCell);
     row.addEventListener("click", () => {
       if (!member.user_id) return;
+      memberDetailEpoch += 1;
+      const epoch = memberDetailEpoch;
       selectedUserId = member.user_id;
+      rememberTeamMember(member.user_id);
       syncLivePolling();
-      loadMemberDetail(member.user_id, true);
+      loadMemberDetail(member.user_id, true, epoch);
     });
     body.append(row);
   }
-}
-
-function sumMetricSeries(series, key) {
-  return (series || []).reduce((total, day) => total + Number(day[key] || 0), 0);
 }
 
 const USAGE_KIND_LABELS = {
@@ -280,96 +330,64 @@ function renderUsageTimeline(events, minutes) {
   return section;
 }
 
-async function loadMemberDetail(userId, showPanel) {
-  const detail = byId("teamMemberDetail");
-  const body = byId("teamMemberDetailBody");
+async function optionalRequest(path) {
+  try {
+    return await request(path);
+  } catch {
+    return null;
+  }
+}
+
+async function loadMemberDetail(userId, showPanel, epoch = memberDetailEpoch) {
   if (!userId) {
-    detail.hidden = true;
+    closeMemberWorkspace();
     stopLivePolling();
     return;
   }
+  const stale = () => epoch !== memberDetailEpoch || selectedUserId !== userId;
   const now = Date.now();
-  const metricsStale = now - liveFetchAt > LIVE_REFRESH_MS * 2;
   const usageStale = now - liveFetchAt > USAGE_REFRESH_MS;
+  const needsUsage = showPanel || usageStale;
+  const needsScripts = showPanel || now - liveFetchAt > LIVE_REFRESH_MS * 2;
   try {
-    const needsMetrics = showPanel || metricsStale || !body.childElementCount;
-    const needsUsage = showPanel || usageStale || !body.childElementCount;
-    const needsScripts = showPanel || metricsStale || !body.childElementCount;
-    const tz = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || "");
-    const requests = [
-      request(`/api/team/members/${encodeURIComponent(userId)}/live`),
-    ];
-    if (needsMetrics) {
-      requests.push(request(`/api/team/members/${encodeURIComponent(userId)}/metrics?days=7`));
-    }
-    if (needsUsage) {
-      requests.push(request(`/api/team/members/${encodeURIComponent(userId)}/usage?minutes=60`));
-    }
-    if (needsScripts) {
-      requests.push(request(`/api/team/members/${encodeURIComponent(userId)}/scripts/performance?days=7&tz=${tz}`));
-    }
     liveFetchAt = now;
-    const results = await Promise.all(requests);
-    const live = results[0];
-    let metrics = null;
-    let usage = null;
-    let scripts = null;
-    let idx = 1;
-    if (needsMetrics) metrics = results[idx++];
-    if (needsUsage) usage = results[idx++];
-    if (needsScripts) scripts = results[idx];
+    const tz = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || "");
+    const live = await request(`/api/team/members/${encodeURIComponent(userId)}/live`);
+    const usage = needsUsage
+      ? await optionalRequest(`/api/team/members/${encodeURIComponent(userId)}/usage?minutes=60`)
+      : null;
+    const scripts = needsScripts
+      ? await optionalRequest(`/api/team/members/${encodeURIComponent(userId)}/scripts/performance?days=7&tz=${tz}`)
+      : null;
+    if (stale()) return;
     const member = (roster?.members || []).find((item) => item.user_id === userId);
-    setText("teamMemberDetailTitle", member?.display_name || member?.email || "Member detail");
-    body.replaceChildren();
-    const liveLine = document.createElement("p");
-    liveLine.className = "team-detail-live";
-    const parts = [];
-    if (live.online) {
-      parts.push(`Live (${live.source || "session"})`, live.stage || "idle");
-      if (live.running) parts.push("dialing");
-      if (live.paused) parts.push("paused");
-      if (live.in_flight_count) parts.push(`${live.in_flight_count} in flight`);
-      if (live.active_lead_name) parts.push(live.active_lead_name);
-    } else {
-      parts.push("Offline", live.stage && live.stage !== "idle" ? `last stage ${live.stage}` : null);
-      parts.push(`last seen ${formatSeen(live.last_seen_at)}`);
+    const extrasRenderer = () => {
+      const wrap = document.createDocumentFragment();
+      if (usage) wrap.append(renderUsageTimeline(usage.events, usage.minutes || 60));
+      if (scripts) wrap.append(renderMemberScriptAnalytics(scripts));
+      const updated = document.createElement("p");
+      updated.className = "team-detail-updated";
+      updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      wrap.append(updated);
+      const shell = document.createElement("div");
+      shell.append(wrap);
+      return shell;
+    };
+    if (showPanel) {
+      if (stale()) return;
+      rememberTeamMember(userId);
+      await openMemberWorkspace(userId, member, live, extrasRenderer);
+      if (stale()) {
+        closeMemberWorkspace();
+        syncTeamPageHeading();
+        return;
+      }
+      syncTeamPageHeading();
+    } else if (!byId("teamMemberDetail")?.hidden) {
+      if (stale()) return;
+      await refreshMemberWorkspace(userId, live, extrasRenderer, member);
     }
-    liveLine.textContent = parts.filter(Boolean).join(" · ");
-    body.append(liveLine);
-    const app = live.app_usage || member?.app_usage;
-    if (app) {
-      body.append(renderAppUsageBlock(app, live.online));
-    }
-    const session = live.session_stats || {};
-    if (live.online && (session.dials || session.conversations)) {
-      const sessionLine = document.createElement("p");
-      sessionLine.textContent = `This session · ${session.dials ?? 0} dials · ${session.conversations ?? 0} conversations`;
-      body.append(sessionLine);
-    }
-    if (metrics) {
-      const series = metrics.metrics?.series || [];
-      const totals = {
-        dials: sumMetricSeries(series, "dials"),
-        connected: sumMetricSeries(series, "connected"),
-        booked: sumMetricSeries(series, "booked"),
-        talk_seconds: sumMetricSeries(series, "talk_seconds"),
-      };
-      const stats = document.createElement("p");
-      const talkMin = Math.round((totals.talk_seconds || 0) / 60);
-      stats.textContent = `Last 7 days · ${totals.dials} dials · ${totals.connected} connects · ${totals.booked} booked · ${talkMin} talk min`;
-      body.append(stats);
-    }
-    if (usage) {
-      body.append(renderUsageTimeline(usage.events, usage.minutes || 60));
-    }
-    if (scripts) {
-      body.append(renderMemberScriptAnalytics(scripts));
-    }
-    const updated = document.createElement("p");
-    updated.className = "team-detail-updated";
-    updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-    body.append(updated);
-    if (showPanel) detail.hidden = false;
+    if (!stale()) renderTeamTable();
   } catch (error) {
     showToast(error.message || "Could not load member detail.");
   }
@@ -378,13 +396,23 @@ async function loadMemberDetail(userId, showPanel) {
 export function renderTeam() {
   if (S.dashboardTab !== "team" || !teamReady()) {
     stopLivePolling();
+    if (S.dashboardTab !== "team") {
+      closeMemberWorkspace();
+      selectedUserId = null;
+    }
     return;
   }
   syncLivePolling();
-  refreshRoster(false);
+  void refreshRoster(false);
 }
 
 export function bindTeam() {
+  setWorkspaceCloseHandler(dismissMemberWorkspace);
+  setWorkspaceAfterClose(syncTeamPageHeading);
+  byId("teamMemberDetailClose")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    dismissMemberWorkspace();
+  });
   const form = byId("teamInviteForm");
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
