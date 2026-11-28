@@ -40,6 +40,15 @@ export async function refreshState() {
     const live = await request("/api/live");
     const prevVersion = state.leads_version;
     mergeLiveState(live);
+    if (S.stopDialingBusy) {
+      state.running = false;
+      state.agent_ready = false;
+      state.paused = false;
+      state.in_flight = [];
+      state.active_lead = null;
+      state.pending_outcome = null;
+      state.stage = "idle";
+    }
     if (!Array.isArray(state.leads) || live.leads_version !== prevVersion) {
       applyLeadsCatalog(await fetchLeadsCatalog());
     } else if (Array.isArray(state.leads)) {
@@ -52,7 +61,7 @@ export async function refreshState() {
       if (metricsResult) state.metrics = metricsResult;
     }
     processSensoryActivity(state.activity_log || []);
-    if (state.running && !state.agent_ready) {
+    if (state.running && !state.agent_ready && !S.stopDialingBusy) {
       maybeRejoinVoice().catch(() => {});
     }
     render();

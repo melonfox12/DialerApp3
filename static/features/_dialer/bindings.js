@@ -1,15 +1,8 @@
-import { postJson } from "../../_core/api.js";
-import { mergeLiveState } from "../../_core/sync-state.js";
-import { S, state } from "../../_core/state.js";
 import { dialerEl, dialerEls } from "../../_core/format.js";
-import { showToast } from "../../_core/notify.js";
-import { showSessionSummary } from "./summary.js";
-import { tearDownVoice } from "./connect.js";
-import { render } from "../../core.js";
 import { bindCallerIdQueueMenu } from "./caller-id-queue.js";
 import { loadCallScriptPanel } from "./call-script-panel.js";
 import { selectDialBusinessType, selectDialPoolStatus, selectTimezone } from "./pool.js";
-import { startDialing } from "./session.js";
+import { startDialing, stopDialing } from "./session.js";
 import { bindCrmStatus } from "./crm-status.js";
 import { bindDialsExport } from "./dials.js";
 import { bindNotesSidebar } from "./notes-sidebar.js";
@@ -19,23 +12,11 @@ export function bindDialer() {
   dialerEl("startButton")?.addEventListener("click", startDialing);
   bindDialsExport();
   bindCrmStatus();
-  dialerEl("stopButton")?.addEventListener("click", async () => {
-    const stopButton = dialerEl("stopButton");
-    if (!stopButton) return;
-    stopButton.disabled = true;
-    try {
-      await tearDownVoice({ intentional: true });
-      const result = await postJson("/api/stop");
-      mergeLiveState(result);
-      render();
-      showSessionSummary(result.session_summary, result.previous_session);
-    }
-    catch (error) { showToast(error.message, true); }
-    finally {
-      const node = dialerEl("stopButton");
-      if (node) node.disabled = !state.running;
-    }
-  });
+  for (const stop of dialerEls("stopButton")) {
+    stop.addEventListener("click", () => {
+      stopDialing().catch(() => {});
+    });
+  }
   document.getElementById("poolTimezoneFilter")?.addEventListener("change", (event) => selectTimezone(event.target.value));
   const poolStatusSelectors = [dialerEl("dialerPoolStatusFilter"), document.getElementById("poolStatusFilter")].filter(Boolean);
   for (const selector of poolStatusSelectors) {

@@ -12,6 +12,14 @@ import { drawProspectWaveform, startProspectWaveform, stopProspectWaveform } fro
 let connectGeneration = 0;
 let rejoinTimer = null;
 
+export function cancelVoiceRejoin() {
+  connectGeneration += 1;
+  clearTimeout(rejoinTimer);
+  rejoinTimer = null;
+  S.voiceRejoinPending = false;
+  S.voiceRejoinBusy = false;
+}
+
 export function prospectLabel(lead) {
   return lead?.name || lead?.business || formatPhoneNumber(lead?.phone) || "Prospect";
 }
@@ -60,8 +68,7 @@ function waitForDisconnect(call, timeoutMs) {
 }
 
 export async function tearDownVoice({ intentional = false } = {}) {
-  connectGeneration += 1;
-  clearTimeout(rejoinTimer);
+  cancelVoiceRejoin();
   S.expectVoiceDisconnect = intentional;
   try {
     if (S.voiceCall) {
@@ -170,7 +177,8 @@ export async function maybeRejoinVoice() {
   const urgent = S.voiceRejoinPending;
   S.voiceRejoinPending = false;
   if (
-    S.voiceRejoinBusy
+    S.stopDialingBusy
+    || S.voiceRejoinBusy
     || S.voiceConnectBusy
     || S.expectVoiceDisconnect
     || !state.running

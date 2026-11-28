@@ -60,6 +60,7 @@ export const S = {
   voiceRejoinBusy: false,
   voiceRejoinPending: false,
   lastVoiceRejoinAt: 0,
+  stopDialingBusy: false,
   micTestStream: null,
   micTestRecorder: null,
   micTestContext: null,
